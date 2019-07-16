@@ -40,7 +40,10 @@ type Mapping struct {
 
 // Constants for port mapper
 const (
-	IPProtocolTCP              uint32 = 6  // protocol number for TCP/IP
-	IPProtocolUDP              uint32 = 17 // protocol number for UCP/IP
-	PortMapperProcedureGetPort uint32 = 3  // PMAPPROC_GETPORT
+	Program          uint32 = 100000 // Portmap service program number (PMAP_PROG)
+	Version          uint32 = 2      // Portmap service version number
+	ProcedureNull    uint32 = 0      // PMAPPROC_NULL
+	ProcedureGetPort uint32 = 3      // PMAPPROC_GETPORT
+	IPProtocolTCP    uint32 = 6      // protocol number for TCP/IP
+	IPProtocolUDP    uint32 = 17     // protocol number for UCP/IP
 )

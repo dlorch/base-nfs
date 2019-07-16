@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/dlorch/nfsv3/mountv3"
 	"github.com/dlorch/nfsv3/portmapv2"
 	"github.com/dlorch/nfsv3/rpcv2"
 )
@@ -42,69 +43,25 @@ import (
 */
 
 func handlePortmapRequest(requestBytes []byte, serverConn *net.UDPConn, clientAddr *net.UDPAddr) {
-	var requestBuffer = bytes.NewBuffer(requestBytes)
-	var rpcMsg rpcv2.RPCMsg
-	var callBody rpcv2.CallBody
-	var credentials rpcv2.OpaqueAuth
-	var verifier rpcv2.OpaqueAuth
+	request, err := rpcv2.ParseRPCMessage(requestBytes)
+
+	if err != nil {
+		fmt.Println("Error: " + err.Error())
+	}
+
 	var mapping portmapv2.Mapping
+	var requestBody = bytes.NewBuffer(request.RequestBody)
 
-	/*
-	 * Request
-	 */
-
-	err := binary.Read(requestBuffer, binary.BigEndian, &rpcMsg) // network byte order is big endian
+	err = binary.Read(requestBody, binary.BigEndian, &mapping)
 
 	if err != nil {
-		fmt.Println("Error decoding RPC message: ", err.Error())
+		fmt.Println("Error: ", err.Error())
 	}
-
-	err = binary.Read(requestBuffer, binary.BigEndian, &callBody)
-
-	if err != nil {
-		fmt.Println("Error decoding call body: ", err.Error())
-	}
-
-	err = binary.Read(requestBuffer, binary.BigEndian, &credentials)
-
-	if err != nil {
-		fmt.Println("Error decoding credentials: ", err.Error())
-	}
-
-	credentialsBody := make([]byte, credentials.Length)
-	err = binary.Read(requestBuffer, binary.BigEndian, &credentialsBody)
-
-	if err != nil {
-		fmt.Println("[mount] Error decoding credentials body: ", err.Error())
-	}
-
-	err = binary.Read(requestBuffer, binary.BigEndian, &verifier)
-
-	if err != nil {
-		fmt.Println("Error decoding verifier: ", err.Error())
-	}
-
-	verifierBody := make([]byte, verifier.Length)
-	err = binary.Read(requestBuffer, binary.BigEndian, &verifierBody)
-
-	if err != nil {
-		fmt.Println("[mount] Error decoding verifier body: ", err.Error())
-	}
-
-	err = binary.Read(requestBuffer, binary.BigEndian, &mapping)
-
-	if err != nil {
-		fmt.Println("Error decoding mapping: ", err.Error())
-	}
-
-	/*
-	 * Response
-	 */
 
 	var responseBuffer = new(bytes.Buffer)
 
 	rpcResponse := rpcv2.RPCMsg{
-		XID:         rpcMsg.XID,
+		XID:         request.RPCMessage.XID,
 		MessageType: rpcv2.Reply,
 	}
 
@@ -128,10 +85,17 @@ func handlePortmapRequest(requestBytes []byte, serverConn *net.UDPConn, clientAd
 
 	err = binary.Write(responseBuffer, binary.BigEndian, &successReply)
 
-	var result uint32
-	result = 892
+	// TODO check callBody.Program == portmapv2.Program
+	// TODO check callBody.Program == portmapv2.Version
 
-	err = binary.Write(responseBuffer, binary.BigEndian, &result)
+	if request.CallBody.Procedure == portmapv2.ProcedureGetPort {
+		// TODO check mapping.Version (1) == mountv3.Version (3)
+		if mapping.Program == mountv3.Program && mapping.Protocol == portmapv2.IPProtocolTCP {
+			var result uint32
+			result = 892
+			err = binary.Write(responseBuffer, binary.BigEndian, &result)
+		}
+	}
 
 	serverConn.WriteToUDP(responseBuffer.Bytes(), clientAddr)
 }
@@ -140,7 +104,7 @@ func runPortmapperService() {
 	serverAddr, err := net.ResolveUDPAddr("udp", ":111")
 
 	if err != nil {
-		fmt.Println("[portmapper] Error resolving UDP address: ", err.Error())
+		fmt.Println("[portmap] Error resolving UDP address: ", err.Error())
 		os.Exit(1)
 	}
 
@@ -339,6 +303,7 @@ func runMountService() {
 }
 
 func main() {
+	// TODO is this really reliable? no guarantee of parallel execution
 	go runPortmapperService()
 	runMountService()
 }

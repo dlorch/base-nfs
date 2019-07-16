@@ -1,5 +1,11 @@
 package rpcv2
 
+import (
+	"bytes"
+	"encoding/binary"
+	"net"
+)
+
 /*
 	RPC: Remote Procedure Call Protocol Version 2 (RFC1057)
 
@@ -81,3 +87,64 @@ const (
 	ProcedureUnavailable uint32 = 3 // program can't support procedure
 	GarbageArguments     uint32 = 4 // procedure can't decode params
 )
+
+// HandleTCPClient handles TCP client connections, reads requests and delimits them into
+// individual messages (RFC 1057: 10. Record Marking Standard) for further processing
+func HandleTCPClient(clientConnection net.Conn) {
+
+}
+
+// HandleUDPClient handles UDP connections
+func HandleUDPClient(rpcMessage []byte, serverConnection *net.UDPConn, clientAddress *net.UDPAddr) {
+
+}
+
+// ParseRPCMessage should be private and called from HandleTCPClient/HandleUDPClient
+func ParseRPCMessage(rpcMessage []byte) (rpcRequest RPCRequest, err error) {
+	var requestBuffer = bytes.NewBuffer(rpcMessage)
+
+	err = binary.Read(requestBuffer, binary.BigEndian, &rpcRequest.RPCMessage)
+
+	if err != nil {
+		return rpcRequest, err
+	}
+
+	err = binary.Read(requestBuffer, binary.BigEndian, &rpcRequest.CallBody)
+
+	if err != nil {
+		return rpcRequest, err
+	}
+
+	err = binary.Read(requestBuffer, binary.BigEndian, &rpcRequest.Credentials)
+
+	if err != nil {
+		return rpcRequest, err
+	}
+
+	rpcRequest.CredentialsBody = make([]byte, rpcRequest.Credentials.Length)
+
+	err = binary.Read(requestBuffer, binary.BigEndian, &rpcRequest.CredentialsBody)
+
+	if err != nil {
+		return rpcRequest, err
+	}
+
+	err = binary.Read(requestBuffer, binary.BigEndian, &rpcRequest.Verifier)
+
+	if err != nil {
+		return rpcRequest, err
+	}
+
+	rpcRequest.VerifierBody = make([]byte, rpcRequest.Verifier.Length)
+
+	err = binary.Read(requestBuffer, binary.BigEndian, &rpcRequest.VerifierBody)
+
+	if err != nil {
+		return rpcRequest, err
+	}
+
+	rpcRequest.RequestBody = make([]byte, requestBuffer.Len())
+	copy(rpcRequest.RequestBody, requestBuffer.Bytes())
+
+	return rpcRequest, nil
+}
