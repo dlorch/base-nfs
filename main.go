@@ -1,10 +1,7 @@
 package main
 
 import (
-	"bytes"
-	"encoding/binary"
 	"fmt"
-	"net"
 	"os"
 
 	"github.com/dlorch/nfsv3/mountv3"
@@ -42,268 +39,27 @@ import (
 	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-func handlePortmapRequest(requestBytes []byte, serverConn *net.UDPConn, clientAddr *net.UDPAddr) {
-	request, err := rpcv2.ParseRPCMessage(requestBytes)
+func main() {
+	portmapService := rpcv2.NewRPCService("portmap", portmapv2.Program, portmapv2.Version)
 
-	if err != nil {
-		fmt.Println("Error: " + err.Error())
-	}
-
-	var mapping portmapv2.Mapping
-	var requestBody = bytes.NewBuffer(request.RequestBody)
-
-	err = binary.Read(requestBody, binary.BigEndian, &mapping)
+	err := portmapService.Listen("udp", ":111")
 
 	if err != nil {
 		fmt.Println("Error: ", err.Error())
-	}
-
-	var responseBuffer = new(bytes.Buffer)
-
-	rpcResponse := rpcv2.RPCMsg{
-		XID:         request.RPCMessage.XID,
-		MessageType: rpcv2.Reply,
-	}
-
-	err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse)
-
-	replyBody := rpcv2.ReplyBody{
-		ReplyStatus: rpcv2.MessageAccepted,
-	}
-
-	err = binary.Write(responseBuffer, binary.BigEndian, &replyBody)
-
-	verifierReply := rpcv2.OpaqueAuth{
-		Flavor: rpcv2.AuthenticationNull,
-		Length: 0,
-	}
-
-	successReply := rpcv2.AcceptedReplySuccess{
-		Verifier:    verifierReply,
-		AcceptState: rpcv2.Success,
-	}
-
-	err = binary.Write(responseBuffer, binary.BigEndian, &successReply)
-
-	// TODO check callBody.Program == portmapv2.Program
-	// TODO check callBody.Program == portmapv2.Version
-
-	if request.CallBody.Procedure == portmapv2.ProcedureGetPort {
-		// TODO check mapping.Version (1) == mountv3.Version (3)
-		if mapping.Program == mountv3.Program && mapping.Protocol == portmapv2.IPProtocolTCP {
-			var result uint32
-			result = 892
-			err = binary.Write(responseBuffer, binary.BigEndian, &result)
-		}
-	}
-
-	serverConn.WriteToUDP(responseBuffer.Bytes(), clientAddr)
-}
-
-func runPortmapperService() {
-	serverAddr, err := net.ResolveUDPAddr("udp", ":111")
-
-	if err != nil {
-		fmt.Println("[portmap] Error resolving UDP address: ", err.Error())
 		os.Exit(1)
 	}
 
-	serverConn, err := net.ListenUDP("udp", serverAddr)
+	// TODO investigate contexts to run services in the background: https://blog.golang.org/context
+	go portmapService.HandleClients()
+
+	mountService := rpcv2.NewRPCService("mount", mountv3.Program, mountv3.Version)
+
+	err = mountService.Listen("tcp", ":892")
 
 	if err != nil {
-		fmt.Println("[portmap] Error listening: ", err.Error())
+		fmt.Println("Error: ", err.Error())
 		os.Exit(1)
 	}
 
-	fmt.Println("[portmap] Listening at: ", serverAddr)
-
-	defer serverConn.Close()
-
-	requestBytes := make([]byte, 1024)
-
-	for {
-		_, clientAddr, err := serverConn.ReadFromUDP(requestBytes)
-
-		if err != nil {
-			fmt.Println("[portmap] Error receiving: ", err.Error())
-		} else {
-			fmt.Println("[portmap] Received request from ", clientAddr)
-			go handlePortmapRequest(requestBytes, serverConn, clientAddr)
-		}
-	}
-}
-
-func handleMountRequest(clientConnection net.Conn) {
-	requestBytes := make([]byte, 1024)
-
-	_, err := clientConnection.Read(requestBytes)
-
-	if err != nil {
-		fmt.Println("[mount] Error reading: ", err.Error())
-	}
-
-	/*
-	 * Request
-	 */
-	var requestBuffer = bytes.NewBuffer(requestBytes)
-	var fragmentHeader uint32
-	var rpcMsg rpcv2.RPCMsg
-	var callBody rpcv2.CallBody
-	var credentials rpcv2.OpaqueAuth
-	var verifier rpcv2.OpaqueAuth
-
-	err = binary.Read(requestBuffer, binary.BigEndian, &fragmentHeader)
-
-	if err != nil {
-		fmt.Println("[mount] Error reading fragment header: ", err.Error())
-	}
-
-	err = binary.Read(requestBuffer, binary.BigEndian, &rpcMsg)
-
-	if err != nil {
-		fmt.Println("[mount] Error decoding RPC message: ", err.Error())
-	}
-
-	err = binary.Read(requestBuffer, binary.BigEndian, &callBody)
-
-	if err != nil {
-		fmt.Println("[mount] Error decoding call body: ", err.Error())
-	}
-
-	err = binary.Read(requestBuffer, binary.BigEndian, &credentials)
-
-	if err != nil {
-		fmt.Println("[mount] Error decoding credentials: ", err.Error())
-	}
-
-	credentialsBody := make([]byte, credentials.Length)
-	err = binary.Read(requestBuffer, binary.BigEndian, &credentialsBody)
-
-	if err != nil {
-		fmt.Println("[mount] Error decoding credentials body: ", err.Error())
-	}
-
-	err = binary.Read(requestBuffer, binary.BigEndian, &verifier)
-
-	if err != nil {
-		fmt.Println("[mount] Error decoding verifier: ", err.Error())
-	}
-
-	verifierBody := make([]byte, verifier.Length)
-	err = binary.Read(requestBuffer, binary.BigEndian, &verifierBody)
-
-	if err != nil {
-		fmt.Println("[mount] Error decoding verifier body: ", err.Error())
-	}
-
-	/*
-	 * Response
-	 */
-	var responseBuffer = new(bytes.Buffer)
-
-	rpcResponse := rpcv2.RPCMsg{
-		XID:         rpcMsg.XID,
-		MessageType: rpcv2.Reply,
-	}
-
-	err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse)
-
-	replyBody := rpcv2.ReplyBody{
-		ReplyStatus: rpcv2.MessageAccepted,
-	}
-
-	err = binary.Write(responseBuffer, binary.BigEndian, &replyBody)
-
-	verifierReply := rpcv2.OpaqueAuth{
-		Flavor: rpcv2.AuthenticationNull,
-		Length: 0,
-	}
-
-	successReply := rpcv2.AcceptedReplySuccess{
-		Verifier:    verifierReply,
-		AcceptState: rpcv2.Success,
-	}
-
-	err = binary.Write(responseBuffer, binary.BigEndian, &successReply)
-
-	// --- mount service body
-
-	var valueFollowsYes uint32
-	valueFollowsYes = 1
-
-	var valueFollowsNo uint32
-	valueFollowsNo = 0
-
-	directoryContents := "/volume1/Public"
-	directoryLength := uint32(len(directoryContents))
-
-	groupContents := "*"
-	groupLength := uint32(len(groupContents))
-
-	fillBytes := uint8(0)
-
-	err = binary.Write(responseBuffer, binary.BigEndian, &valueFollowsYes)
-	err = binary.Write(responseBuffer, binary.BigEndian, &directoryLength)
-	_, err = responseBuffer.Write([]byte(directoryContents))
-	err = binary.Write(responseBuffer, binary.BigEndian, &fillBytes)
-
-	err = binary.Write(responseBuffer, binary.BigEndian, &valueFollowsYes)
-	err = binary.Write(responseBuffer, binary.BigEndian, &groupLength)
-	_, err = responseBuffer.Write([]byte(groupContents))
-	err = binary.Write(responseBuffer, binary.BigEndian, &fillBytes)
-	err = binary.Write(responseBuffer, binary.BigEndian, &fillBytes)
-	err = binary.Write(responseBuffer, binary.BigEndian, &fillBytes)
-	err = binary.Write(responseBuffer, binary.BigEndian, &valueFollowsNo)
-
-	err = binary.Write(responseBuffer, binary.BigEndian, &valueFollowsNo)
-
-	// ---- fragments
-
-	var fragmentBuffer = new(bytes.Buffer)
-	lastFragment := uint32(1 << 31)
-	fragmentLength := uint32(responseBuffer.Len())
-
-	err = binary.Write(fragmentBuffer, binary.BigEndian, lastFragment|fragmentLength)
-
-	// ---- end
-
-	fragmentBuffer.Write(responseBuffer.Bytes())
-
-	_, err = clientConnection.Write(fragmentBuffer.Bytes())
-
-	if err != nil {
-		fmt.Println("[mount] Error sending response: ", err.Error())
-	}
-
-	clientConnection.Close()
-}
-
-func runMountService() {
-	serverConn, err := net.Listen("tcp", ":892")
-
-	if err != nil {
-		fmt.Println("[mount] Error listening: ", err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Println("[mount] Listening at: ", serverConn.Addr())
-
-	defer serverConn.Close()
-
-	for {
-		clientConnection, err := serverConn.Accept()
-
-		if err != nil {
-			fmt.Println("[mount] Error receiving: ", err.Error())
-		} else {
-			fmt.Println("[mount] Received request from ", clientConnection.RemoteAddr())
-			go handleMountRequest(clientConnection)
-		}
-	}
-}
-
-func main() {
-	// TODO is this really reliable? no guarantee of parallel execution
-	go runPortmapperService()
-	runMountService()
+	mountService.HandleClients()
 }
