@@ -1,5 +1,3 @@
-package nfsv3
-
 /*
 	NFS Version 3 Protocol Specification (RFC1813)
 
@@ -29,6 +27,8 @@ package nfsv3
 	OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+
+package nfsv3
 
 // Constants for mount protocol (RFC1813)
 const (

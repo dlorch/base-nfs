@@ -1,13 +1,3 @@
-package main
-
-import (
-	"fmt"
-	"os"
-
-	"github.com/dlorch/nfsv3/mountv3"
-	"github.com/dlorch/nfsv3/portmapv2"
-)
-
 /*
 	NFSv3 Server
 
@@ -37,6 +27,16 @@ import (
 	OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/dlorch/nfsv3/mountv3"
+	"github.com/dlorch/nfsv3/portmapv2"
+)
 
 func main() {
 	portmapService := portmapv2.NewPortmapService()

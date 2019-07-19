@@ -1,12 +1,3 @@
-package rpcv2
-
-import (
-	"bytes"
-	"encoding/binary"
-	"fmt"
-	"net"
-)
-
 /*
 	RPC: Remote Procedure Call Protocol Version 2 (RFC1057)
 
@@ -36,6 +27,15 @@ import (
 	OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+
+package rpcv2
+
+import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"net"
+)
 
 // RPCMsg describes the request/response RPC header (RFC1057: struct rpc_msg)
 type RPCMsg struct {

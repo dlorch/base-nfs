@@ -1,13 +1,3 @@
-package mountv3
-
-import (
-	"bytes"
-	"encoding/binary"
-	"fmt"
-
-	"github.com/dlorch/nfsv3/rpcv2"
-)
-
 /*
 	Port Mapper Protocol Specification Version 2 (RFC1057)
 
@@ -37,6 +27,16 @@ import (
 	OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+
+package mountv3
+
+import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
+
+	"github.com/dlorch/nfsv3/rpcv2"
+)
 
 // GroupNode (RFC1813: struct groupnode)
 type GroupNode struct {
