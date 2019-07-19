@@ -1,5 +1,13 @@
 package mountv3
 
+import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
+
+	"github.com/dlorch/nfsv3/rpcv2"
+)
+
 /*
 	Port Mapper Protocol Specification Version 2 (RFC1057)
 
@@ -49,3 +57,75 @@ const (
 	MountProcedure3UnmountAll uint32 = 4      // MOUNTPROC3_UMNTALL
 	MountProcedure3Export     uint32 = 5      // MOUNTPROC3_EXPORT
 )
+
+func procedure3export(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
+	var responseBuffer = new(bytes.Buffer)
+
+	rpcMessage := rpcv2.RPCMsg{
+		XID:         request.RPCMessage.XID,
+		MessageType: rpcv2.Reply,
+	}
+
+	replyBody := rpcv2.ReplyBody{
+		ReplyStatus: rpcv2.MessageAccepted,
+	}
+
+	verifierReply := rpcv2.OpaqueAuth{
+		Flavor: rpcv2.AuthenticationNull,
+		Length: 0,
+	}
+
+	successReply := rpcv2.AcceptedReplySuccess{
+		Verifier:    verifierReply,
+		AcceptState: rpcv2.Success,
+	}
+
+	// --- mount service body
+
+	var valueFollowsYes uint32
+	valueFollowsYes = 1
+
+	var valueFollowsNo uint32
+	valueFollowsNo = 0
+
+	directoryContents := "/volume1/Public"
+	directoryLength := uint32(len(directoryContents))
+
+	groupContents := "*"
+	groupLength := uint32(len(groupContents))
+
+	fillBytes := uint8(0)
+
+	err := binary.Write(responseBuffer, binary.BigEndian, &valueFollowsYes)
+	err = binary.Write(responseBuffer, binary.BigEndian, &directoryLength)
+	_, err = responseBuffer.Write([]byte(directoryContents))
+	err = binary.Write(responseBuffer, binary.BigEndian, &fillBytes)
+
+	err = binary.Write(responseBuffer, binary.BigEndian, &valueFollowsYes)
+	err = binary.Write(responseBuffer, binary.BigEndian, &groupLength)
+	_, err = responseBuffer.Write([]byte(groupContents))
+	err = binary.Write(responseBuffer, binary.BigEndian, &fillBytes)
+	err = binary.Write(responseBuffer, binary.BigEndian, &fillBytes)
+	err = binary.Write(responseBuffer, binary.BigEndian, &fillBytes)
+	err = binary.Write(responseBuffer, binary.BigEndian, &valueFollowsNo)
+
+	err = binary.Write(responseBuffer, binary.BigEndian, &valueFollowsNo)
+
+	if err != nil {
+		fmt.Println("Error: ", err.Error())
+		// TODO
+	}
+
+	// --- create response
+
+	response := &rpcv2.RPCResponse{
+		RPCMessage:           rpcMessage,
+		ReplyBody:            replyBody,
+		AcceptedReplySuccess: successReply,
+	}
+
+	response.ResponseBody = make([]byte, responseBuffer.Len())
+	copy(response.ResponseBody, responseBuffer.Bytes())
+
+	return response
+}

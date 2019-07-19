@@ -22,42 +22,65 @@ type RPCResponse struct {
 	RPCMessage           RPCMsg
 	ReplyBody            ReplyBody
 	AcceptedReplySuccess AcceptedReplySuccess
+	ResponseBody         []byte
 }
+
+type udpClient struct {
+	requestBytes     []byte
+	serverConnection *net.UDPConn
+	clientAddress    *net.UDPAddr
+}
+
+type procedureHandler func(*RPCRequest) *RPCResponse
 
 // RPCService describes and RPC service
 type RPCService struct { // TODO lowercase structs to unexport them
-	ShortName     string
-	Program       uint32
-	Version       uint32
-	Network       string // "tcp", "tcp4", "tcp6", "udp", "udp4", "udp6"
-	TCPListener   net.Listener
-	UDPConnection *net.UDPConn
+	ShortName  string // friendly name (for logging)
+	Program    uint32 // RPC program number
+	Version    uint32 // RPC program version
+	TCPClients chan net.Conn
+	UDPClients chan udpClient
+	Procedures map[uint32]procedureHandler
 }
 
 // NewRPCService returns a new RPC service
 func NewRPCService(ShortName string, Program uint32, Version uint32) *RPCService {
 	rpcService := &RPCService{
-		ShortName: ShortName,
-		Program:   Program,
-		Version:   Version,
+		ShortName:  ShortName,
+		Program:    Program,
+		Version:    Version,
+		TCPClients: make(chan net.Conn),
+		UDPClients: make(chan udpClient),
+		Procedures: make(map[uint32]procedureHandler),
 	}
 
 	return rpcService
 }
 
-// Listen announces the local network address
-func (rpcService *RPCService) Listen(network string, address string) (err error) {
+// AddListener announces the local network address
+func (rpcService *RPCService) AddListener(network string, address string) (err error) {
 	switch network {
 	case "tcp", "tcp4", "tcp6":
-		rpcService.TCPListener, err = net.Listen(network, address)
+		tcpListener, err := net.Listen(network, address)
 
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("[%s] Listening on TCP %s\n", rpcService.ShortName, rpcService.TCPListener.Addr())
+		fmt.Printf("[%s] Listening on TCP %s\n", rpcService.ShortName, tcpListener.Addr())
 
-		rpcService.Network = network
+		go func() {
+			for {
+				clientConnection, err := tcpListener.Accept()
+
+				if err != nil {
+					fmt.Printf("[%s] Error: %s\n", rpcService.ShortName, err.Error())
+				} else {
+					fmt.Printf("[%s] Received TCP request from %s\n", rpcService.ShortName, clientConnection.RemoteAddr())
+					rpcService.TCPClients <- clientConnection
+				}
+			}
+		}()
 	case "udp", "udp4", "udp6":
 		serverAddress, err := net.ResolveUDPAddr(network, address)
 
@@ -65,7 +88,7 @@ func (rpcService *RPCService) Listen(network string, address string) (err error)
 			return err
 		}
 
-		rpcService.UDPConnection, err = net.ListenUDP(network, serverAddress)
+		serverConnection, err := net.ListenUDP(network, serverAddress)
 
 		if err != nil {
 			return err
@@ -73,9 +96,29 @@ func (rpcService *RPCService) Listen(network string, address string) (err error)
 
 		fmt.Printf("[%s] Listening on UDP %s\n", rpcService.ShortName, serverAddress)
 
-		rpcService.Network = network
+		go func() {
+			requestBytes := make([]byte, 1024) // TODO: optimal/maximal UDP size?
+
+			for {
+				_, clientAddress, err := serverConnection.ReadFromUDP(requestBytes)
+
+				if err != nil {
+					fmt.Printf("[%s] Error: %s\n", rpcService.ShortName, err.Error())
+				} else {
+					fmt.Printf("[%s] Received UDP request from %s\n", rpcService.ShortName, clientAddress)
+
+					udpClient := udpClient{
+						requestBytes:     requestBytes,
+						serverConnection: serverConnection,
+						clientAddress:    clientAddress,
+					}
+
+					rpcService.UDPClients <- udpClient
+				}
+			}
+		}()
 	default:
-		return errors.New("Invalid network provided. Valid options: tcp, tcp4, tpc6, udp, udp4 or udp6")
+		return errors.New("Invalid network provided. Valid options are: tcp, tcp4, tpc6, udp, udp4 or udp6")
 	}
 
 	return nil
@@ -83,35 +126,17 @@ func (rpcService *RPCService) Listen(network string, address string) (err error)
 
 // HandleClients accepts and processes clients
 func (rpcService *RPCService) HandleClients() {
-	switch rpcService.Network {
-	case "tcp", "tcp4", "tcp6":
-		defer rpcService.TCPListener.Close()
-
-		for {
-			clientConnection, err := rpcService.TCPListener.Accept()
-
-			if err != nil {
-				fmt.Printf("[%s] Error: %s\n", rpcService.ShortName, err.Error())
-			} else {
-				fmt.Printf("[%s] Received TCP request from %s\n", rpcService.ShortName, clientConnection.RemoteAddr())
-				HandleTCPClient(clientConnection)
-			}
-		}
-	case "udp", "udp4", "udp6":
-		defer rpcService.UDPConnection.Close()
-		requestBytes := make([]byte, 1024) // TODO: optimal/maximal UDP size?
-
-		for {
-			_, clientAddress, err := rpcService.UDPConnection.ReadFromUDP(requestBytes)
-
-			if err != nil {
-				fmt.Printf("[%s] Error: %s\n", rpcService.ShortName, err.Error())
-			} else {
-				fmt.Printf("[%s] Received UDP request from %s\n", rpcService.ShortName, clientAddress)
-				HandleUDPClient(requestBytes, rpcService.UDPConnection, clientAddress)
-			}
+	for {
+		select {
+		case clientConnection := <-rpcService.TCPClients:
+			handleTCPClient(clientConnection, rpcService)
+		case udpClient := <-rpcService.UDPClients:
+			handleUDPClient(udpClient.requestBytes, udpClient.serverConnection, udpClient.clientAddress, rpcService)
 		}
 	}
+}
 
-	fmt.Printf("[%s] Error: service not listening\n", rpcService.ShortName)
+// RegisterProcedure registers a callback function for a given RPC procedure number
+func (rpcService *RPCService) RegisterProcedure(procedure uint32, procedureHandler procedureHandler) {
+	rpcService.Procedures[procedure] = procedureHandler
 }

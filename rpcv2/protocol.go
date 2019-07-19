@@ -5,9 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
-
-	"github.com/dlorch/nfsv3/mountv3"
-	"github.com/dlorch/nfsv3/portmapv2"
 )
 
 /*
@@ -95,7 +92,7 @@ const (
 
 // handleTCPClient handles TCP client connections, reads requests and delimits them into
 // individual messages (RFC 1057: 10. Record Marking Standard) for further processing
-func HandleTCPClient(clientConnection net.Conn) {
+func handleTCPClient(clientConnection net.Conn, rpcService *RPCService) {
 	moreRequests := true
 
 	requestBytes, isLastRequest, err := readNextRequest(clientConnection)
@@ -106,97 +103,39 @@ func HandleTCPClient(clientConnection net.Conn) {
 			// TODO send error back to client
 		}
 
-		// responseBytes, err := handleClient(requestBytes)
-		// TODO
-		request, err := parseRPCMessage(requestBytes)
+		request, err := parseRPCRequest(requestBytes)
 
 		if err != nil {
 			fmt.Println("Error: " + err.Error())
 		}
 
-		if request.CallBody.Program == portmapv2.Program && request.CallBody.Procedure == portmapv2.ProcedureGetPort {
+		procedure := rpcService.Procedures[request.CallBody.Procedure] // TODO check for not existing procedures
 
-		} else if request.CallBody.Program == mountv3.Program && request.CallBody.Procedure == mountv3.MountProcedure3Export {
-			/*
-			 * Response
-			 */
-			var responseBuffer = new(bytes.Buffer)
+		rpcResponse := procedure(&request)
 
-			rpcResponse := RPCMsg{
-				XID:         request.RPCMessage.XID,
-				MessageType: Reply,
-			}
+		responseBytes, err := serializeRPCResponse(rpcResponse)
 
-			err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse)
+		if err != nil {
+			fmt.Println("Error: " + err.Error())
+			// TODO send error message back to client
+		}
 
-			replyBody := ReplyBody{
-				ReplyStatus: MessageAccepted,
-			}
+		// ---- fragments
 
-			err = binary.Write(responseBuffer, binary.BigEndian, &replyBody)
+		var fragmentBuffer = new(bytes.Buffer)
+		lastFragment := uint32(1 << 31)
+		fragmentLength := uint32(len(responseBytes))
 
-			verifierReply := OpaqueAuth{
-				Flavor: AuthenticationNull,
-				Length: 0,
-			}
+		err = binary.Write(fragmentBuffer, binary.BigEndian, lastFragment|fragmentLength)
 
-			successReply := AcceptedReplySuccess{
-				Verifier:    verifierReply,
-				AcceptState: Success,
-			}
+		// ---- end
 
-			err = binary.Write(responseBuffer, binary.BigEndian, &successReply)
+		fragmentBuffer.Write(responseBytes)
 
-			// --- mount service body
+		_, err = clientConnection.Write(fragmentBuffer.Bytes())
 
-			var valueFollowsYes uint32
-			valueFollowsYes = 1
-
-			var valueFollowsNo uint32
-			valueFollowsNo = 0
-
-			directoryContents := "/volume1/Public"
-			directoryLength := uint32(len(directoryContents))
-
-			groupContents := "*"
-			groupLength := uint32(len(groupContents))
-
-			fillBytes := uint8(0)
-
-			err = binary.Write(responseBuffer, binary.BigEndian, &valueFollowsYes)
-			err = binary.Write(responseBuffer, binary.BigEndian, &directoryLength)
-			_, err = responseBuffer.Write([]byte(directoryContents))
-			err = binary.Write(responseBuffer, binary.BigEndian, &fillBytes)
-
-			err = binary.Write(responseBuffer, binary.BigEndian, &valueFollowsYes)
-			err = binary.Write(responseBuffer, binary.BigEndian, &groupLength)
-			_, err = responseBuffer.Write([]byte(groupContents))
-			err = binary.Write(responseBuffer, binary.BigEndian, &fillBytes)
-			err = binary.Write(responseBuffer, binary.BigEndian, &fillBytes)
-			err = binary.Write(responseBuffer, binary.BigEndian, &fillBytes)
-			err = binary.Write(responseBuffer, binary.BigEndian, &valueFollowsNo)
-
-			err = binary.Write(responseBuffer, binary.BigEndian, &valueFollowsNo)
-
-			// ---- fragments
-
-			var fragmentBuffer = new(bytes.Buffer)
-			lastFragment := uint32(1 << 31)
-			fragmentLength := uint32(responseBuffer.Len())
-
-			err = binary.Write(fragmentBuffer, binary.BigEndian, lastFragment|fragmentLength)
-
-			// ---- end
-
-			fragmentBuffer.Write(responseBuffer.Bytes())
-
-			_, err = clientConnection.Write(fragmentBuffer.Bytes())
-
-			if err != nil {
-				fmt.Println("[mount] Error sending response: ", err.Error())
-			}
-		} else {
-			fmt.Println("Error: unrecognized program ", request.CallBody.Program, " with procedure ", request.CallBody.Procedure)
+		if err != nil {
+			fmt.Println("[mount] Error sending response: ", err.Error())
 		}
 
 		if isLastRequest {
@@ -208,68 +147,53 @@ func HandleTCPClient(clientConnection net.Conn) {
 }
 
 // handleUDPClient handles UDP connections
-func HandleUDPClient(requestBytes []byte, serverConnection *net.UDPConn, clientAddress *net.UDPAddr) {
-	request, err := parseRPCMessage(requestBytes)
+func handleUDPClient(requestBytes []byte, serverConnection *net.UDPConn, clientAddress *net.UDPAddr, rpcService *RPCService) {
+	request, err := parseRPCRequest(requestBytes)
 
 	if err != nil {
 		fmt.Println("Error: " + err.Error())
 		// TODO send error message back to client
 	}
 
-	var mapping portmapv2.Mapping
-	var requestBody = bytes.NewBuffer(request.RequestBody)
+	procedure := rpcService.Procedures[request.CallBody.Procedure] // TODO check for not existing procedures
+	rpcResponse := procedure(&request)
 
-	err = binary.Read(requestBody, binary.BigEndian, &mapping)
+	responseBytes, err := serializeRPCResponse(rpcResponse)
 
 	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		// TODO: send error message back to client
+		fmt.Println("Error: " + err.Error())
+		// TODO send error message back to client
 	}
 
-	var responseBuffer = new(bytes.Buffer)
-
-	rpcResponse := RPCMsg{
-		XID:         request.RPCMessage.XID,
-		MessageType: Reply,
-	}
-
-	err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse)
-
-	replyBody := ReplyBody{
-		ReplyStatus: MessageAccepted,
-	}
-
-	err = binary.Write(responseBuffer, binary.BigEndian, &replyBody)
-
-	verifierReply := OpaqueAuth{
-		Flavor: AuthenticationNull,
-		Length: 0,
-	}
-
-	successReply := AcceptedReplySuccess{
-		Verifier:    verifierReply,
-		AcceptState: Success,
-	}
-
-	err = binary.Write(responseBuffer, binary.BigEndian, &successReply)
-
-	// TODO check callBody.Program == portmapv2.Program
-	// TODO check callBody.Program == portmapv2.Version
-
-	if request.CallBody.Procedure == portmapv2.ProcedureGetPort {
-		// TODO check mapping.Version (1) == mountv3.Version (3)
-		if mapping.Program == mountv3.Program && mapping.Protocol == portmapv2.IPProtocolTCP {
-			var result uint32
-			result = 892
-			err = binary.Write(responseBuffer, binary.BigEndian, &result)
-		}
-	}
-
-	serverConnection.WriteToUDP(responseBuffer.Bytes(), clientAddress)
+	serverConnection.WriteToUDP(responseBytes, clientAddress)
 }
 
-func handleRequest(requestBytes []byte) (responseBytes []byte, err error) {
-	return responseBytes, err
+func serializeRPCResponse(rpcResponse *RPCResponse) (response []byte, err error) {
+	var responseBuffer = new(bytes.Buffer)
+
+	err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse.RPCMessage)
+
+	if err != nil {
+		return response, err
+	}
+
+	err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse.ReplyBody)
+
+	if err != nil {
+		return response, err
+	}
+
+	err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse.AcceptedReplySuccess)
+
+	if err != nil {
+		return response, err
+	}
+
+	_, err = responseBuffer.Write(rpcResponse.ResponseBody)
+
+	response = make([]byte, responseBuffer.Len())
+	copy(response, responseBuffer.Bytes())
+	return response, nil
 }
 
 func readNextRequest(clientConnection net.Conn) (requestBytes []byte, isLastRequest bool, err error) {
@@ -322,7 +246,7 @@ func writeFragmentedReply(clientConnection net.Conn, messageBytes []byte, lastMe
 	//
 }
 
-func parseRPCMessage(rpcMessage []byte) (rpcRequest RPCRequest, err error) {
+func parseRPCRequest(rpcMessage []byte) (rpcRequest RPCRequest, err error) {
 	var requestBuffer = bytes.NewBuffer(rpcMessage)
 
 	err = binary.Read(requestBuffer, binary.BigEndian, &rpcRequest.RPCMessage)
@@ -336,6 +260,8 @@ func parseRPCMessage(rpcMessage []byte) (rpcRequest RPCRequest, err error) {
 	if err != nil {
 		return rpcRequest, err
 	}
+
+	// TODO verify rpcRequest.CallBody.RPCVersion == 2
 
 	err = binary.Read(requestBuffer, binary.BigEndian, &rpcRequest.Credentials)
 

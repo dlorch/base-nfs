@@ -1,15 +1,11 @@
-package main
+package mountv3
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/dlorch/nfsv3/mountv3"
-	"github.com/dlorch/nfsv3/portmapv2"
+	"github.com/dlorch/nfsv3/rpcv2"
 )
 
 /*
-	NFSv3 Server
+	Port Mapper Protocol Specification Version 2 (RFC1057)
 
 	BSD 2-Clause License
 
@@ -38,34 +34,11 @@ import (
 	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-func main() {
-	portmapService := portmapv2.NewPortmapService()
+// NewMountService ...
+func NewMountService() *rpcv2.RPCService {
+	rpcService := rpcv2.NewRPCService("mount", Program, Version)
 
-	err := portmapService.AddListener("udp", ":111")
+	rpcService.RegisterProcedure(MountProcedure3Export, procedure3export)
 
-	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		os.Exit(1)
-	}
-
-	err = portmapService.AddListener("tcp", ":111")
-
-	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		os.Exit(1)
-	}
-
-	// TODO investigate contexts to run services in the background: https://blog.golang.org/context
-	go portmapService.HandleClients()
-
-	mountService := mountv3.NewMountService()
-
-	err = mountService.AddListener("tcp", ":892")
-
-	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		os.Exit(1)
-	}
-
-	mountService.HandleClients()
+	return rpcService
 }

@@ -1,15 +1,14 @@
-package main
+package portmapv2
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/dlorch/nfsv3/mountv3"
-	"github.com/dlorch/nfsv3/portmapv2"
+	"github.com/dlorch/nfsv3/rpcv2"
 )
 
 /*
-	NFSv3 Server
+	Port Mapper Protocol Specification Version 2 (RFC1057)
 
 	BSD 2-Clause License
 
@@ -38,34 +37,21 @@ import (
 	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-func main() {
-	portmapService := portmapv2.NewPortmapService()
+// NewPortmapService ...
+func NewPortmapService() *rpcv2.RPCService {
+	rpcService := rpcv2.NewRPCService("portmap", Program, Version)
 
-	err := portmapService.AddListener("udp", ":111")
+	rpcService.RegisterProcedure(ProcedureNull, procedureNull)
+	rpcService.RegisterProcedure(ProcedureGetPort, procedureGetPort)
 
-	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		os.Exit(1)
+	return rpcService
+}
+
+func getPort(mapping Mapping) (port uint32, err error) {
+	// TODO check mapping.Version (1) == mountv3.Version (3)
+	if mapping.Program == mountv3.Program && mapping.Protocol == IPProtocolTCP {
+		return 892, nil
 	}
 
-	err = portmapService.AddListener("tcp", ":111")
-
-	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		os.Exit(1)
-	}
-
-	// TODO investigate contexts to run services in the background: https://blog.golang.org/context
-	go portmapService.HandleClients()
-
-	mountService := mountv3.NewMountService()
-
-	err = mountService.AddListener("tcp", ":892")
-
-	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		os.Exit(1)
-	}
-
-	mountService.HandleClients()
+	return port, fmt.Errorf("Unregistered program '%d' with protocol '%d'", mapping.Program, mapping.Protocol)
 }
