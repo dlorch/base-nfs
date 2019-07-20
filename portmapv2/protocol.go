@@ -35,6 +35,8 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/dlorch/nfsv3/nfsv3"
+
 	"github.com/dlorch/nfsv3/rpcv2"
 )
 
@@ -48,20 +50,57 @@ type Mapping struct {
 
 // Constants for port mapper
 const (
-	Program          uint32 = 100000 // Portmap service program number (PMAP_PROG)
-	Version          uint32 = 2      // Portmap service version number
-	ProcedureNull    uint32 = 0      // PMAPPROC_NULL
-	ProcedureGetPort uint32 = 3      // PMAPPROC_GETPORT
-	IPProtocolTCP    uint32 = 6      // protocol number for TCP/IP
-	IPProtocolUDP    uint32 = 17     // protocol number for UCP/IP
+	Program                 uint32 = 100000 // Portmap service program number (PMAP_PROG)
+	Version                 uint32 = 2      // Portmap service version number
+	PortmapProcedureNull    uint32 = 0      // PMAPPROC_NULL
+	PortmapProcedureSet     uint32 = 1      // PMAPPROC_SET
+	PortmapProcedureUnset   uint32 = 2      // PMAPPROC_UNSET
+	PortmapProcedureGetPort uint32 = 3      // PMAPPROC_GETPORT
+	PortmapProcedureDump    uint32 = 4      // PMAPPROC_DUMP
+	PortmapProcedureCallIt  uint32 = 5      // PMAPPROC_CALLIT
+	IPProtocolTCP           uint32 = 6      // protocol number for TCP/IP
+	IPProtocolUDP           uint32 = 17     // protocol number for UCP/IP
+	ProgramNotAvailable     uint32 = 0      // Port value of zero means the program has not been registered
 )
 
+// the null procedure is actually quite important - NFS clients use it to
+// 'probe' for valid NFS server versions
 func procedureNull(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
-	fmt.Println("procedureNull") // TODO
-	return nil
+	response := &rpcv2.RPCResponse{
+		RPCMessage: rpcv2.RPCMsg{
+			XID:         request.RPCMessage.XID,
+			MessageType: rpcv2.Reply,
+		},
+		ReplyBody: rpcv2.ReplyBody{
+			ReplyStatus: rpcv2.MessageAccepted,
+		},
+	}
+
+	verifier := rpcv2.OpaqueAuth{
+		Flavor: rpcv2.AuthenticationNull,
+		Length: 0,
+	}
+
+	if request.CallBody.ProgramVersion == nfsv3.Version {
+		response.AcceptedReply = rpcv2.AcceptedReply{
+			Verifier:    verifier,
+			AcceptState: rpcv2.Success,
+		}
+	} else {
+		response.AcceptedReply = rpcv2.AcceptedReply{
+			Verifier:                verifier,
+			AcceptState:             rpcv2.ProgramMismatch,
+			LowestVersionSupported:  nfsv3.Version, // The "program version" indicated by the client seems to apply
+			HighestVersionSupported: nfsv3.Version, // to the NFS services as a whole, not the portmapper service alone
+		}
+	}
+
+	return response
 }
 
 func procedureGetPort(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
+	fmt.Println("procedureGetPort")
+
 	var requestBody = bytes.NewBuffer(request.RequestBody)
 	var mapping Mapping
 
@@ -86,7 +125,7 @@ func procedureGetPort(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
 		Length: 0,
 	}
 
-	successReply := rpcv2.AcceptedReplySuccess{
+	successReply := rpcv2.AcceptedReply{
 		Verifier:    verifierReply,
 		AcceptState: rpcv2.Success,
 	}
@@ -106,13 +145,13 @@ func procedureGetPort(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
 	}
 
 	response := &rpcv2.RPCResponse{
-		RPCMessage:           rpcMessage,
-		ReplyBody:            replyBody,
-		AcceptedReplySuccess: successReply,
+		RPCMessage:    rpcMessage,
+		ReplyBody:     replyBody,
+		AcceptedReply: successReply,
 	}
 
-	response.ResponseBody = make([]byte, responseBuffer.Len())
-	copy(response.ResponseBody, responseBuffer.Bytes())
+	response.AcceptedReply.Results = make([]byte, responseBuffer.Len())
+	copy(response.AcceptedReply.Results, responseBuffer.Bytes())
 
 	return response
 }

@@ -75,7 +75,7 @@ func mountProcedure3export(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
 		Length: 0,
 	}
 
-	successReply := rpcv2.AcceptedReplySuccess{
+	successReply := rpcv2.AcceptedReply{
 		Verifier:    verifierReply,
 		AcceptState: rpcv2.Success,
 	}
@@ -119,13 +119,13 @@ func mountProcedure3export(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
 	// --- create response
 
 	response := &rpcv2.RPCResponse{
-		RPCMessage:           rpcMessage,
-		ReplyBody:            replyBody,
-		AcceptedReplySuccess: successReply,
+		RPCMessage:    rpcMessage,
+		ReplyBody:     replyBody,
+		AcceptedReply: successReply,
 	}
 
-	response.ResponseBody = make([]byte, responseBuffer.Len())
-	copy(response.ResponseBody, responseBuffer.Bytes())
+	response.AcceptedReply.Results = make([]byte, responseBuffer.Len())
+	copy(response.AcceptedReply.Results, responseBuffer.Bytes())
 
 	return response
 }

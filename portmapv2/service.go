@@ -45,13 +45,20 @@ import (
 func NewPortmapService() rpcv2.RPCService {
 	rpcService := rpcv2.NewRPCService("portmap", Program, Version)
 
-	rpcService.RegisterProcedure(ProcedureNull, procedureNull)
-	rpcService.RegisterProcedure(ProcedureGetPort, procedureGetPort)
+	rpcService.RegisterProcedure(PortmapProcedureNull, procedureNull)
+	rpcService.RegisterProcedure(PortmapProcedureGetPort, procedureGetPort)
 
 	return rpcService
 }
 
 func getPort(mapping Mapping) (port uint32, err error) {
+	port = ProgramNotAvailable
+
+	fmt.Println("getPort")
+	fmt.Println(mapping.Program)
+	fmt.Println(mapping.Protocol)
+	fmt.Println(mapping.Version)
+
 	// TODO check mapping.Version (1) == mountv3.Version (3)
 	if mapping.Program == mountv3.Program && mapping.Protocol == IPProtocolTCP {
 		return 892, nil

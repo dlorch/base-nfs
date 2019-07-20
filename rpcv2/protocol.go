@@ -33,6 +33,7 @@ package rpcv2
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"net"
 )
@@ -56,10 +57,21 @@ type ReplyBody struct {
 	ReplyStatus uint32
 }
 
-// AcceptedReplySuccess (RFC1057: struct accepted_reply)
-type AcceptedReplySuccess struct {
-	Verifier    OpaqueAuth
-	AcceptState uint32
+// AcceptedReply (RFC1057: struct accepted_reply)
+type AcceptedReply struct {
+	Verifier                OpaqueAuth
+	AcceptState             uint32
+	Results                 []byte
+	LowestVersionSupported  uint32
+	HighestVersionSupported uint32
+}
+
+// RejectedReply (RFC1057: rjected_reply)
+type RejectedReply struct {
+	RejectState                uint32
+	LowestSupportedRPCVersion  uint32
+	HighestSupportedRPCVersion uint32
+	// TODO auth_stat stat
 }
 
 // OpaqueAuth describes the type of authentication used (RFC1057: struct opaque_auth)
@@ -78,6 +90,7 @@ const (
 
 // Constants for RPCv2 (RFC 1057)
 const (
+	RPCVersion           uint32 = 2       // RPC version number
 	Call                 uint32 = 0       // Message type CALL
 	Reply                uint32 = 1       // Message type REPLY
 	MessageAccepted      uint32 = 0       // Reply to a call message
@@ -87,116 +100,116 @@ const (
 	ProgramMismatch      uint32 = 2       // remote can't support version
 	ProcedureUnavailable uint32 = 3       // program can't support procedure
 	GarbageArguments     uint32 = 4       // procedure can't decode params
+	RPCMismatch          uint32 = 0       // RPC version number != 2
+	AuthenticationError  uint32 = 1       // remote can't authenticate caller
 	LastFragment         uint32 = 1 << 31 // last fragment delimiter for record marking (RM)
 )
 
 // handleTCPClient handles TCP client connections, reads requests and delimits them into
 // individual messages (RFC 1057: 10. Record Marking Standard) for further processing
-func handleTCPClient(clientConnection net.Conn, rpcService *rpcService) {
+func handleTCPClient(clientConnection net.Conn, rpcProcedures map[uint32]procedureHandler) error {
 	moreRequests := true
 
-	requestBytes, isLastRequest, err := readNextRequest(clientConnection)
+	requestBytes, isLastRequest, err := readNextRequestFragment(clientConnection)
 
 	for moreRequests {
+		// handle error from reading next request fragment
 		if err != nil {
-			fmt.Println("Error: ", err.Error())
-			// TODO send error back to client
+			return err
 		}
 
-		request, err := parseRPCRequest(requestBytes)
+		responseBytes, err := handleClient(requestBytes, rpcProcedures)
 
 		if err != nil {
-			fmt.Println("Error: " + err.Error())
+			return err
 		}
 
-		procedure := rpcService.procedures[request.CallBody.Procedure] // TODO check for not existing procedures
-
-		rpcResponse := procedure(&request)
-
-		responseBytes, err := serializeRPCResponse(rpcResponse)
+		err = writeResponseFragment(clientConnection, responseBytes, isLastRequest)
 
 		if err != nil {
-			fmt.Println("Error: " + err.Error())
-			// TODO send error message back to client
-		}
-
-		// ---- fragments
-
-		var fragmentBuffer = new(bytes.Buffer)
-		lastFragment := uint32(1 << 31)
-		fragmentLength := uint32(len(responseBytes))
-
-		err = binary.Write(fragmentBuffer, binary.BigEndian, lastFragment|fragmentLength)
-
-		// ---- end
-
-		fragmentBuffer.Write(responseBytes)
-
-		_, err = clientConnection.Write(fragmentBuffer.Bytes())
-
-		if err != nil {
-			fmt.Println("[mount] Error sending response: ", err.Error())
+			return err
 		}
 
 		if isLastRequest {
 			moreRequests = false
+		} else {
+			requestBytes, isLastRequest, err = readNextRequestFragment(clientConnection)
 		}
 	}
 
 	clientConnection.Close()
+
+	return nil
 }
 
 // handleUDPClient handles UDP connections
-func handleUDPClient(requestBytes []byte, serverConnection *net.UDPConn, clientAddress *net.UDPAddr, rpcService *rpcService) {
-	request, err := parseRPCRequest(requestBytes)
+func handleUDPClient(requestBytes []byte, serverConnection *net.UDPConn, clientAddress *net.UDPAddr, rpcProcedures map[uint32]procedureHandler) error {
+	responseBytes, err := handleClient(requestBytes, rpcProcedures)
 
 	if err != nil {
-		fmt.Println("Error: " + err.Error())
-		// TODO send error message back to client
-	}
-
-	procedure := rpcService.procedures[request.CallBody.Procedure] // TODO check for not existing procedures
-	rpcResponse := procedure(&request)
-
-	responseBytes, err := serializeRPCResponse(rpcResponse)
-
-	if err != nil {
-		fmt.Println("Error: " + err.Error())
-		// TODO send error message back to client
+		return err
 	}
 
 	serverConnection.WriteToUDP(responseBytes, clientAddress)
+
+	return nil
 }
 
-func serializeRPCResponse(rpcResponse *RPCResponse) (response []byte, err error) {
-	var responseBuffer = new(bytes.Buffer)
-
-	err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse.RPCMessage)
+func handleClient(requestBytes []byte, rpcProcedures map[uint32]procedureHandler) (responseBytes []byte, err error) {
+	rpcRequest, err := parseRPCRequest(requestBytes)
 
 	if err != nil {
-		return response, err
+		return responseBytes, errors.New("Malformed RPC request")
 	}
 
-	err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse.ReplyBody)
+	var rpcResponse *RPCResponse
 
-	if err != nil {
-		return response, err
+	if rpcRequest.CallBody.RPCVersion != RPCVersion {
+		rpcResponse = &RPCResponse{
+			RPCMessage: RPCMsg{
+				XID:         rpcRequest.RPCMessage.XID,
+				MessageType: Reply,
+			},
+			ReplyBody: ReplyBody{
+				ReplyStatus: MessageDenied,
+			},
+			RejectedReply: RejectedReply{
+				RejectState:                RPCMismatch,
+				LowestSupportedRPCVersion:  RPCVersion,
+				HighestSupportedRPCVersion: RPCVersion,
+			},
+		}
+	} else {
+		rpcProcedure, found := rpcProcedures[rpcRequest.CallBody.Procedure]
+
+		if !found {
+			rpcResponse = &RPCResponse{
+				RPCMessage: RPCMsg{
+					XID:         rpcRequest.RPCMessage.XID,
+					MessageType: Reply,
+				},
+				ReplyBody: ReplyBody{
+					ReplyStatus: MessageAccepted,
+				},
+				AcceptedReply: AcceptedReply{
+					Verifier: OpaqueAuth{
+						Flavor: AuthenticationNull,
+						Length: 0,
+					},
+					AcceptState: ProcedureUnavailable,
+				},
+			}
+		} else {
+			rpcResponse = rpcProcedure(&rpcRequest)
+		}
 	}
 
-	err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse.AcceptedReplySuccess)
+	responseBytes, err = serializeRPCResponse(rpcResponse)
 
-	if err != nil {
-		return response, err
-	}
-
-	_, err = responseBuffer.Write(rpcResponse.ResponseBody)
-
-	response = make([]byte, responseBuffer.Len())
-	copy(response, responseBuffer.Bytes())
-	return response, nil
+	return responseBytes, err
 }
 
-func readNextRequest(clientConnection net.Conn) (requestBytes []byte, isLastRequest bool, err error) {
+func readNextRequestFragment(clientConnection net.Conn) (requestBytes []byte, isLastRequest bool, err error) {
 	var fragmentHeader uint32
 	fragmentHeaderBytes := make([]byte, 4)
 
@@ -220,7 +233,7 @@ func readNextRequest(clientConnection net.Conn) (requestBytes []byte, isLastRequ
 	messageBytesBuffer := new(bytes.Buffer)
 	readBuffer := make([]byte, 1024)
 
-	for remainingFragmentLength > 0 {
+	for remainingFragmentLength > 0 { // TODO rewrite this
 		bytesRead, err := clientConnection.Read(readBuffer)
 
 		if err != nil {
@@ -242,12 +255,38 @@ func readNextRequest(clientConnection net.Conn) (requestBytes []byte, isLastRequ
 	return requestBytes, isLastRequest, nil
 }
 
-func writeFragmentedReply(clientConnection net.Conn, messageBytes []byte, lastMessage bool) {
-	//
+func writeResponseFragment(clientConnection net.Conn, responseBytes []byte, lastFragment bool) error {
+	var err error
+	fragmentBuffer := new(bytes.Buffer)
+	fragmentLength := uint32(len(responseBytes))
+
+	if lastFragment {
+		err = binary.Write(fragmentBuffer, binary.BigEndian, LastFragment|fragmentLength)
+	} else {
+		err = binary.Write(fragmentBuffer, binary.BigEndian, fragmentLength)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	_, err = fragmentBuffer.Write(responseBytes)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = clientConnection.Write(fragmentBuffer.Bytes())
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func parseRPCRequest(rpcMessage []byte) (rpcRequest RPCRequest, err error) {
-	var requestBuffer = bytes.NewBuffer(rpcMessage)
+func parseRPCRequest(requestBytes []byte) (rpcRequest RPCRequest, err error) {
+	requestBuffer := bytes.NewBuffer(requestBytes)
 
 	err = binary.Read(requestBuffer, binary.BigEndian, &rpcRequest.RPCMessage)
 
@@ -260,8 +299,6 @@ func parseRPCRequest(rpcMessage []byte) (rpcRequest RPCRequest, err error) {
 	if err != nil {
 		return rpcRequest, err
 	}
-
-	// TODO verify rpcRequest.CallBody.RPCVersion == 2
 
 	err = binary.Read(requestBuffer, binary.BigEndian, &rpcRequest.Credentials)
 
@@ -295,4 +332,70 @@ func parseRPCRequest(rpcMessage []byte) (rpcRequest RPCRequest, err error) {
 	copy(rpcRequest.RequestBody, requestBuffer.Bytes())
 
 	return rpcRequest, nil
+}
+
+func serializeRPCResponse(rpcResponse *RPCResponse) (responseBytes []byte, err error) {
+	responseBuffer := new(bytes.Buffer)
+
+	err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse.RPCMessage)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	switch rpcResponse.ReplyBody.ReplyStatus {
+	case MessageAccepted:
+		err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse.ReplyBody)
+
+		if err != nil {
+			return responseBytes, err
+		}
+
+		err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse.AcceptedReply.Verifier)
+
+		if err != nil {
+			return responseBytes, err
+		}
+
+		err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse.AcceptedReply.AcceptState)
+
+		if err != nil {
+			return responseBytes, err
+		}
+
+		switch rpcResponse.AcceptedReply.AcceptState {
+		case Success:
+			_, err = responseBuffer.Write(rpcResponse.AcceptedReply.Results)
+
+			if err != nil {
+				return responseBytes, err
+			}
+		case ProgramMismatch:
+			err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse.AcceptedReply.LowestVersionSupported)
+
+			if err != nil {
+				return responseBytes, err
+			}
+
+			err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse.AcceptedReply.HighestVersionSupported)
+
+			if err != nil {
+				return responseBytes, err
+			}
+		case ProgramUnavailable, ProcedureUnavailable, GarbageArguments:
+			// void (intentionally left blank)
+		default:
+			return responseBytes, fmt.Errorf("Unrecognized AcceptState value '%d' in AcceptedReply", rpcResponse.AcceptedReply.AcceptState)
+		}
+	case MessageDenied:
+		// TODO
+		return responseBytes, fmt.Errorf("Unimplemented ReplyStatus value '%d' in ReplyBody", rpcResponse.ReplyBody.ReplyStatus)
+	default:
+		return responseBytes, fmt.Errorf("Invalid ReplyStatus value '%d' in ReplyBody", rpcResponse.ReplyBody.ReplyStatus)
+	}
+
+	responseBytes = make([]byte, responseBuffer.Len())
+	copy(responseBytes, responseBuffer.Bytes())
+
+	return responseBytes, nil
 }

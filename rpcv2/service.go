@@ -50,10 +50,10 @@ type RPCRequest struct {
 
 // RPCResponse describes an RPC response
 type RPCResponse struct {
-	RPCMessage           RPCMsg
-	ReplyBody            ReplyBody
-	AcceptedReplySuccess AcceptedReplySuccess
-	ResponseBody         []byte
+	RPCMessage    RPCMsg
+	ReplyBody     ReplyBody
+	AcceptedReply AcceptedReply
+	RejectedReply RejectedReply
 }
 
 type udpClient struct {
@@ -186,12 +186,18 @@ func (rpcService *rpcService) AddListener(network string, address string) (err e
 
 // HandleClients accepts and processes clients
 func (rpcService *rpcService) HandleClients() {
+	var err error
+
 	for {
 		select {
 		case clientConnection := <-rpcService.tcpClients:
-			handleTCPClient(clientConnection, rpcService)
+			err = handleTCPClient(clientConnection, rpcService.procedures)
 		case udpClient := <-rpcService.udpClients:
-			handleUDPClient(udpClient.requestBytes, udpClient.serverConnection, udpClient.clientAddress, rpcService)
+			err = handleUDPClient(udpClient.requestBytes, udpClient.serverConnection, udpClient.clientAddress, rpcService.procedures)
+		}
+
+		if err != nil {
+			fmt.Printf("[%s] Error: %s\n", rpcService.shortName, err.Error())
 		}
 	}
 }
