@@ -35,10 +35,12 @@ import (
 )
 
 // NewMountService ...
-func NewMountService() *rpcv2.RPCService {
+func NewMountService() rpcv2.RPCService {
 	rpcService := rpcv2.NewRPCService("mount", Program, Version)
 
-	rpcService.RegisterProcedure(MountProcedure3Export, procedure3export)
+	rpcService.RegisterProcedure(MountProcedure3Export, mountProcedure3export)
+	rpcService.RegisterProcedure(MountProcedure3Mount, mountProcedure3mount)
+	rpcService.RegisterProcedure(MountProcedure3Mount, mountProcedure3mount)
 
 	return rpcService
 }

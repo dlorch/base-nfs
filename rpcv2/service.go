@@ -63,32 +63,43 @@ type udpClient struct {
 
 type procedureHandler func(*RPCRequest) *RPCResponse
 
-// RPCService describes and RPC service
-type RPCService struct { // TODO lowercase structs to unexport them
-	ShortName  string // friendly name (for logging)
-	Program    uint32 // RPC program number
-	Version    uint32 // RPC program version
-	TCPClients chan net.Conn
-	UDPClients chan udpClient
-	Procedures map[uint32]procedureHandler
+type rpcService struct {
+	shortName    string // friendly name (for logging)
+	program      uint32 // RPC program number
+	version      uint32 // RPC program version
+	tcpClients   chan net.Conn
+	tcpListeners []net.Listener
+	udpClients   chan udpClient
+	udpListeners []*net.UDPConn
+	procedures   map[uint32]procedureHandler
+	listening    bool
+}
+
+// RPCService represents an RPC service
+type RPCService interface {
+	AddListener(string, string) error
+	HandleClients()
+	RegisterProcedure(uint32, procedureHandler)
+	RemoveAllListeners()
 }
 
 // NewRPCService returns a new RPC service
-func NewRPCService(ShortName string, Program uint32, Version uint32) *RPCService {
-	rpcService := &RPCService{
-		ShortName:  ShortName,
-		Program:    Program,
-		Version:    Version,
-		TCPClients: make(chan net.Conn),
-		UDPClients: make(chan udpClient),
-		Procedures: make(map[uint32]procedureHandler),
+func NewRPCService(shortName string, program uint32, version uint32) RPCService {
+	rpcService := &rpcService{
+		shortName:  shortName,
+		program:    program,
+		version:    version,
+		tcpClients: make(chan net.Conn),
+		udpClients: make(chan udpClient),
+		procedures: make(map[uint32]procedureHandler),
+		listening:  false,
 	}
 
 	return rpcService
 }
 
 // AddListener announces the local network address
-func (rpcService *RPCService) AddListener(network string, address string) (err error) {
+func (rpcService *rpcService) AddListener(network string, address string) (err error) {
 	switch network {
 	case "tcp", "tcp4", "tcp6":
 		tcpListener, err := net.Listen(network, address)
@@ -97,17 +108,22 @@ func (rpcService *RPCService) AddListener(network string, address string) (err e
 			return err
 		}
 
-		fmt.Printf("[%s] Listening on TCP %s\n", rpcService.ShortName, tcpListener.Addr())
+		fmt.Printf("[%s] Listening on TCP %s\n", rpcService.shortName, tcpListener.Addr())
+
+		rpcService.listening = true
+		rpcService.tcpListeners = append(rpcService.tcpListeners, tcpListener)
 
 		go func() {
-			for {
+			for rpcService.listening {
 				clientConnection, err := tcpListener.Accept()
 
-				if err != nil {
-					fmt.Printf("[%s] Error: %s\n", rpcService.ShortName, err.Error())
-				} else {
-					fmt.Printf("[%s] Received TCP request from %s\n", rpcService.ShortName, clientConnection.RemoteAddr())
-					rpcService.TCPClients <- clientConnection
+				if rpcService.listening { // closing the tcpListener in RemoveAllListeners() will cause an accept error - ignore
+					if err != nil {
+						fmt.Printf("[%s] Error: %s\n", rpcService.shortName, err.Error())
+					} else {
+						fmt.Printf("[%s] Received TCP request from %s\n", rpcService.shortName, clientConnection.RemoteAddr())
+						rpcService.tcpClients <- clientConnection
+					}
 				}
 			}
 		}()
@@ -124,26 +140,31 @@ func (rpcService *RPCService) AddListener(network string, address string) (err e
 			return err
 		}
 
-		fmt.Printf("[%s] Listening on UDP %s\n", rpcService.ShortName, serverAddress)
+		fmt.Printf("[%s] Listening on UDP %s\n", rpcService.shortName, serverAddress)
+
+		rpcService.listening = true
+		rpcService.udpListeners = append(rpcService.udpListeners, serverConnection)
 
 		go func() {
 			requestBytes := make([]byte, 1024) // TODO: optimal/maximal UDP size?
 
-			for {
+			for rpcService.listening {
 				_, clientAddress, err := serverConnection.ReadFromUDP(requestBytes)
 
-				if err != nil {
-					fmt.Printf("[%s] Error: %s\n", rpcService.ShortName, err.Error())
-				} else {
-					fmt.Printf("[%s] Received UDP request from %s\n", rpcService.ShortName, clientAddress)
+				if rpcService.listening { // closing the udpListener in RemoveAllListeners() will cause a read error - ignore
+					if err != nil {
+						fmt.Printf("[%s] Error: %s\n", rpcService.shortName, err.Error())
+					} else {
+						fmt.Printf("[%s] Received UDP request from %s\n", rpcService.shortName, clientAddress)
 
-					udpClient := udpClient{
-						requestBytes:     requestBytes,
-						serverConnection: serverConnection,
-						clientAddress:    clientAddress,
+						udpClient := udpClient{
+							requestBytes:     requestBytes,
+							serverConnection: serverConnection,
+							clientAddress:    clientAddress,
+						}
+
+						rpcService.udpClients <- udpClient
 					}
-
-					rpcService.UDPClients <- udpClient
 				}
 			}
 		}()
@@ -155,18 +176,32 @@ func (rpcService *RPCService) AddListener(network string, address string) (err e
 }
 
 // HandleClients accepts and processes clients
-func (rpcService *RPCService) HandleClients() {
+func (rpcService *rpcService) HandleClients() {
 	for {
 		select {
-		case clientConnection := <-rpcService.TCPClients:
+		case clientConnection := <-rpcService.tcpClients:
 			handleTCPClient(clientConnection, rpcService)
-		case udpClient := <-rpcService.UDPClients:
+		case udpClient := <-rpcService.udpClients:
 			handleUDPClient(udpClient.requestBytes, udpClient.serverConnection, udpClient.clientAddress, rpcService)
 		}
 	}
 }
 
 // RegisterProcedure registers a callback function for a given RPC procedure number
-func (rpcService *RPCService) RegisterProcedure(procedure uint32, procedureHandler procedureHandler) {
-	rpcService.Procedures[procedure] = procedureHandler
+func (rpcService *rpcService) RegisterProcedure(procedure uint32, procedureHandler procedureHandler) {
+	rpcService.procedures[procedure] = procedureHandler
+}
+
+func (rpcService *rpcService) RemoveAllListeners() {
+	rpcService.listening = false
+
+	for _, tcpListener := range rpcService.tcpListeners {
+		tcpListener.Close()
+	}
+	rpcService.tcpListeners = make([]net.Listener, 0)
+
+	for _, udpListener := range rpcService.udpListeners {
+		udpListener.Close()
+	}
+	rpcService.udpListeners = make([]*net.UDPConn, 0)
 }

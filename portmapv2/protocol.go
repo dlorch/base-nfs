@@ -57,6 +57,7 @@ const (
 )
 
 func procedureNull(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
+	fmt.Println("procedureNull") // TODO
 	return nil
 }
 
@@ -93,6 +94,8 @@ func procedureGetPort(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
 	// TODO check callBody.Version == portmapv2.Version
 
 	result, err := getPort(mapping)
+
+	fmt.Println(result)
 
 	var responseBuffer = new(bytes.Buffer)
 

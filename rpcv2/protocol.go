@@ -92,7 +92,7 @@ const (
 
 // handleTCPClient handles TCP client connections, reads requests and delimits them into
 // individual messages (RFC 1057: 10. Record Marking Standard) for further processing
-func handleTCPClient(clientConnection net.Conn, rpcService *RPCService) {
+func handleTCPClient(clientConnection net.Conn, rpcService *rpcService) {
 	moreRequests := true
 
 	requestBytes, isLastRequest, err := readNextRequest(clientConnection)
@@ -109,7 +109,7 @@ func handleTCPClient(clientConnection net.Conn, rpcService *RPCService) {
 			fmt.Println("Error: " + err.Error())
 		}
 
-		procedure := rpcService.Procedures[request.CallBody.Procedure] // TODO check for not existing procedures
+		procedure := rpcService.procedures[request.CallBody.Procedure] // TODO check for not existing procedures
 
 		rpcResponse := procedure(&request)
 
@@ -147,7 +147,7 @@ func handleTCPClient(clientConnection net.Conn, rpcService *RPCService) {
 }
 
 // handleUDPClient handles UDP connections
-func handleUDPClient(requestBytes []byte, serverConnection *net.UDPConn, clientAddress *net.UDPAddr, rpcService *RPCService) {
+func handleUDPClient(requestBytes []byte, serverConnection *net.UDPConn, clientAddress *net.UDPAddr, rpcService *rpcService) {
 	request, err := parseRPCRequest(requestBytes)
 
 	if err != nil {
@@ -155,7 +155,7 @@ func handleUDPClient(requestBytes []byte, serverConnection *net.UDPConn, clientA
 		// TODO send error message back to client
 	}
 
-	procedure := rpcService.Procedures[request.CallBody.Procedure] // TODO check for not existing procedures
+	procedure := rpcService.procedures[request.CallBody.Procedure] // TODO check for not existing procedures
 	rpcResponse := procedure(&request)
 
 	responseBytes, err := serializeRPCResponse(rpcResponse)

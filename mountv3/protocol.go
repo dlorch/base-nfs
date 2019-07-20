@@ -58,7 +58,7 @@ const (
 	MountProcedure3Export     uint32 = 5      // MOUNTPROC3_EXPORT
 )
 
-func procedure3export(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
+func mountProcedure3export(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
 	var responseBuffer = new(bytes.Buffer)
 
 	rpcMessage := rpcv2.RPCMsg{
@@ -128,4 +128,9 @@ func procedure3export(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
 	copy(response.ResponseBody, responseBuffer.Bytes())
 
 	return response
+}
+
+func mountProcedure3mount(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
+	fmt.Println("mountProcedure3mount")
+	return nil
 }

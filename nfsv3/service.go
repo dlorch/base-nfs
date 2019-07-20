@@ -1,5 +1,5 @@
 /*
-	NFSv3 Server
+	NFS Version 3 Protocol Specification (RFC1813)
 
 	BSD 2-Clause License
 
@@ -28,56 +28,20 @@
 	OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-package main
+package nfsv3
 
-import (
-	"fmt"
-	"os"
+import "github.com/dlorch/nfsv3/rpcv2"
 
-	"github.com/dlorch/nfsv3/mountv3"
-	"github.com/dlorch/nfsv3/nfsv3"
-	"github.com/dlorch/nfsv3/portmapv2"
-)
+// NewNFSv3Service ...
+func NewNFSv3Service() rpcv2.RPCService {
+	rpcService := rpcv2.NewRPCService("nfsv3", Program, Version)
 
-func main() {
-	portmapService := portmapv2.NewPortmapService()
+	rpcService.RegisterProcedure(NFSProcedure3Null, nfsProcedure3Null)
+	rpcService.RegisterProcedure(NFSProcedure3GetAttributes, nfsProcedure3GetAttributes)
+	rpcService.RegisterProcedure(NFSProcedure3Lookup, nfsProcedure3Lookup)
+	rpcService.RegisterProcedure(NFSProcedure3Access, nfsProcedure3Access)
+	rpcService.RegisterProcedure(NFSProcedure3FSInfo, nfsProcedure3FSInfo)
+	rpcService.RegisterProcedure(NFSProcedure3PathConf, nfsProcedure3PathConf)
 
-	err := portmapService.AddListener("udp", ":111")
-
-	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		os.Exit(1)
-	}
-
-	err = portmapService.AddListener("tcp", ":111")
-
-	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		os.Exit(1)
-	}
-
-	// TODO investigate contexts to run services in the background: https://blog.golang.org/context
-	go portmapService.HandleClients()
-
-	mountService := mountv3.NewMountService()
-
-	err = mountService.AddListener("tcp", ":892")
-
-	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		os.Exit(1)
-	}
-
-	go mountService.HandleClients()
-
-	nfsv3Service := nfsv3.NewNFSv3Service()
-
-	err = nfsv3Service.AddListener("tcp", ":2049")
-
-	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		os.Exit(1)
-	}
-
-	nfsv3Service.HandleClients()
+	return rpcService
 }

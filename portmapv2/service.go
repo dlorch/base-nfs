@@ -33,12 +33,16 @@ package portmapv2
 import (
 	"fmt"
 
+	"github.com/dlorch/nfsv3/nfsv3"
+
 	"github.com/dlorch/nfsv3/mountv3"
 	"github.com/dlorch/nfsv3/rpcv2"
 )
 
+// TODO register service with portmapper
+
 // NewPortmapService ...
-func NewPortmapService() *rpcv2.RPCService {
+func NewPortmapService() rpcv2.RPCService {
 	rpcService := rpcv2.NewRPCService("portmap", Program, Version)
 
 	rpcService.RegisterProcedure(ProcedureNull, procedureNull)
@@ -51,6 +55,8 @@ func getPort(mapping Mapping) (port uint32, err error) {
 	// TODO check mapping.Version (1) == mountv3.Version (3)
 	if mapping.Program == mountv3.Program && mapping.Protocol == IPProtocolTCP {
 		return 892, nil
+	} else if mapping.Program == nfsv3.Program && mapping.Protocol == IPProtocolTCP && mapping.Version == nfsv3.Version {
+		return 2049, nil
 	}
 
 	return port, fmt.Errorf("Unregistered program '%d' with protocol '%d'", mapping.Program, mapping.Protocol)
