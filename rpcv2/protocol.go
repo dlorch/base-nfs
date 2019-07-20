@@ -175,6 +175,8 @@ func handleClient(requestBytes []byte, rpcProcedures map[uint32]procedureHandler
 	} else {
 		rpcProcedure, found := rpcProcedures[rpcRequest.CallBody.Procedure]
 
+		fmt.Println("Procedure ", rpcRequest.CallBody.Procedure, " for program ", rpcRequest.CallBody.Program)
+
 		if !found {
 			rpcResponse = &RPCResponse{
 				RPCMessage: RPCMsg{

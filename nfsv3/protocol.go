@@ -65,8 +65,36 @@ const (
 )
 
 func nfsProcedure3Null(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
-	fmt.Println("nfsProcedure3Null")
-	return nil
+	response := &rpcv2.RPCResponse{
+		RPCMessage: rpcv2.RPCMsg{
+			XID:         request.RPCMessage.XID,
+			MessageType: rpcv2.Reply,
+		},
+		ReplyBody: rpcv2.ReplyBody{
+			ReplyStatus: rpcv2.MessageAccepted,
+		},
+	}
+
+	verifier := rpcv2.OpaqueAuth{
+		Flavor: rpcv2.AuthenticationNull,
+		Length: 0,
+	}
+
+	if request.CallBody.ProgramVersion == Version {
+		response.AcceptedReply = rpcv2.AcceptedReply{
+			Verifier:    verifier,
+			AcceptState: rpcv2.Success,
+		}
+	} else {
+		response.AcceptedReply = rpcv2.AcceptedReply{
+			Verifier:                verifier,
+			AcceptState:             rpcv2.ProgramMismatch,
+			LowestVersionSupported:  Version,
+			HighestVersionSupported: Version,
+		}
+	}
+
+	return response
 }
 
 func nfsProcedure3GetAttributes(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {

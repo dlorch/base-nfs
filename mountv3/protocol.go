@@ -46,17 +46,72 @@ type GroupNode struct {
 type ExportNode struct {
 }
 
+// MountResult3 (RFC1813: struct mountres3)
+type MountResult3 struct {
+	Status         uint32
+	MountResult3OK MountResult3OK
+}
+
+// MountResult3OK (RFC1813: struct mountres3_ok)
+type MountResult3OK struct {
+	FileHandle3 []byte
+	AuthFlavors []uint32
+}
+
 // Constants for mount protocol (RFC1813)
 const (
-	Program                   uint32 = 100005 // Mount service program number
-	Version                   uint32 = 3      // Mount service version
-	MountProcedure3Null       uint32 = 0      // MOUNTPROC3_NULL
-	MountProcedure3Mount      uint32 = 1      // MOUNTPROC3_MNT
-	MountProcedure3Dump       uint32 = 2      // MOUNTPROC3_DUMP
-	MountProcedure3Unmount    uint32 = 3      // MOUNTPROC3_UMNT
-	MountProcedure3UnmountAll uint32 = 4      // MOUNTPROC3_UMNTALL
-	MountProcedure3Export     uint32 = 5      // MOUNTPROC3_EXPORT
+	Program                    uint32 = 100005 // Mount service program number
+	Version                    uint32 = 3      // Mount service version
+	MountProcedure3Null        uint32 = 0      // MOUNTPROC3_NULL
+	MountProcedure3Mount       uint32 = 1      // MOUNTPROC3_MNT
+	MountProcedure3Dump        uint32 = 2      // MOUNTPROC3_DUMP
+	MountProcedure3Unmount     uint32 = 3      // MOUNTPROC3_UMNT
+	MountProcedure3UnmountAll  uint32 = 4      // MOUNTPROC3_UMNTALL
+	MountProcedure3Export      uint32 = 5      // MOUNTPROC3_EXPORT
+	Mount3OK                   uint32 = 0      // MNT3_OK: no error
+	Mount3ErrorPermissions     uint32 = 1      // MNT3ERR_PERM: Not owner
+	Mount3ErrorNoEntry         uint32 = 2      // MNT3ERR_NOENT: No such file or directory
+	Mount3ErrorIO              uint32 = 5      // MNT3ERR_IO: I/O error
+	Mount3ErrorAccess          uint32 = 13     // MNT3ERR_ACCES: Permission denied
+	Mount3ErrorNotDirectory    uint32 = 20     // MNT3ERR_NOTDIR: Not a directory
+	Mount3ErrorInvalidArgument uint32 = 22     // MNT3ERR_INVAL: Invalid argument
+	Mount3ErrorNameTooLong     uint32 = 63     // MNT3ERR_NAMETOOLONG: Filename too long
+	Mount3ErrorNotSupported    uint32 = 10004  // MNT3ERR_NOTSUPP: Operation not supported
+	Mount3ErrorServerFault     uint32 = 10006  // MNT3ERR_SERVERFAULT: A failure on the server
 )
+
+func mountProcedure3Null(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
+	response := &rpcv2.RPCResponse{
+		RPCMessage: rpcv2.RPCMsg{
+			XID:         request.RPCMessage.XID,
+			MessageType: rpcv2.Reply,
+		},
+		ReplyBody: rpcv2.ReplyBody{
+			ReplyStatus: rpcv2.MessageAccepted,
+		},
+	}
+
+	verifier := rpcv2.OpaqueAuth{
+		Flavor: rpcv2.AuthenticationNull,
+		Length: 0,
+	}
+
+	if request.CallBody.ProgramVersion == Version {
+		response.AcceptedReply = rpcv2.AcceptedReply{
+			Verifier:    verifier,
+			AcceptState: rpcv2.Success,
+		}
+	} else {
+		response.AcceptedReply = rpcv2.AcceptedReply{
+			Verifier:                verifier,
+			AcceptState:             rpcv2.ProgramMismatch,
+			LowestVersionSupported:  Version,
+			HighestVersionSupported: Version,
+		}
+	}
+
+	return response
+}
 
 func mountProcedure3export(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
 	var responseBuffer = new(bytes.Buffer)
@@ -131,6 +186,58 @@ func mountProcedure3export(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
 }
 
 func mountProcedure3mount(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
-	fmt.Println("mountProcedure3mount")
-	return nil
+	// parse request
+	requestBuffer := bytes.NewBuffer(request.RequestBody)
+
+	var dirPathLength uint32
+
+	err := binary.Read(requestBuffer, binary.BigEndian, &dirPathLength)
+
+	if err != nil {
+		fmt.Println("Error: ", err.Error())
+		// TODO
+	}
+
+	dirPathName := make([]byte, dirPathLength) // TODO unsafe?
+
+	err = binary.Read(requestBuffer, binary.BigEndian, &dirPathName)
+
+	if err != nil {
+		fmt.Println("Error: ", err.Error())
+		// TODO
+	}
+
+	// prepare result
+	var resultBuffer = new(bytes.Buffer)
+
+	err = binary.Write(resultBuffer, binary.BigEndian, Mount3OK)
+
+	err = binary.Write(resultBuffer, binary.BigEndian, uint32(4))  // length of file handle
+	err = binary.Write(resultBuffer, binary.BigEndian, uint32(42)) // file handle
+
+	err = binary.Write(resultBuffer, binary.BigEndian, uint32(1))                // number of auth flavors
+	err = binary.Write(resultBuffer, binary.BigEndian, rpcv2.AuthenticationUNIX) // allowed flavors
+
+	// create response
+	response := &rpcv2.RPCResponse{
+		RPCMessage: rpcv2.RPCMsg{
+			XID:         request.RPCMessage.XID,
+			MessageType: rpcv2.Reply,
+		},
+		ReplyBody: rpcv2.ReplyBody{
+			ReplyStatus: rpcv2.MessageAccepted,
+		},
+		AcceptedReply: rpcv2.AcceptedReply{
+			Verifier: rpcv2.OpaqueAuth{
+				Flavor: rpcv2.AuthenticationNull,
+				Length: 0,
+			},
+			AcceptState: rpcv2.Success,
+		},
+	}
+
+	response.AcceptedReply.Results = make([]byte, resultBuffer.Len())
+	copy(response.AcceptedReply.Results, resultBuffer.Bytes())
+
+	return response
 }
