@@ -108,38 +108,31 @@ const (
 // handleTCPClient handles TCP client connections, reads requests and delimits them into
 // individual messages (RFC 1057: 10. Record Marking Standard) for further processing
 func handleTCPClient(clientConnection net.Conn, rpcProcedures map[uint32]procedureHandler) error {
-	moreRequests := true
+	var responseBytes []byte
+	requestBytes, isLastFragment, err := readNextRequestFragment(clientConnection)
 
-	requestBytes, isLastRequest, err := readNextRequestFragment(clientConnection)
-
-	for moreRequests {
-		// handle error from reading next request fragment
+	for {
 		if err != nil {
+			if err.Error() == "EOF" {
+				return nil
+			}
 			return err
 		}
 
-		responseBytes, err := handleClient(requestBytes, rpcProcedures)
-
-		if err != nil {
-			return err
-		}
-
-		err = writeResponseFragment(clientConnection, responseBytes, isLastRequest)
+		responseBytes, err = handleClient(requestBytes, rpcProcedures)
 
 		if err != nil {
 			return err
 		}
 
-		if isLastRequest {
-			moreRequests = false
-		} else {
-			requestBytes, isLastRequest, err = readNextRequestFragment(clientConnection)
+		err = writeResponseFragment(clientConnection, responseBytes, isLastFragment)
+
+		if err != nil {
+			return err
 		}
+
+		requestBytes, isLastFragment, err = readNextRequestFragment(clientConnection)
 	}
-
-	clientConnection.Close()
-
-	return nil
 }
 
 // handleUDPClient handles UDP connections
@@ -209,14 +202,14 @@ func handleClient(requestBytes []byte, rpcProcedures map[uint32]procedureHandler
 	return responseBytes, err
 }
 
-func readNextRequestFragment(clientConnection net.Conn) (requestBytes []byte, isLastRequest bool, err error) {
+func readNextRequestFragment(clientConnection net.Conn) (requestBytes []byte, isLastFragment bool, err error) {
 	var fragmentHeader uint32
 	fragmentHeaderBytes := make([]byte, 4)
 
 	_, err = clientConnection.Read(fragmentHeaderBytes)
 
 	if err != nil {
-		return requestBytes, isLastRequest, err
+		return requestBytes, isLastFragment, err
 	}
 
 	fragmentHeaderBytesBuffer := bytes.NewBuffer(fragmentHeaderBytes)
@@ -224,10 +217,10 @@ func readNextRequestFragment(clientConnection net.Conn) (requestBytes []byte, is
 	err = binary.Read(fragmentHeaderBytesBuffer, binary.BigEndian, &fragmentHeader)
 
 	if err != nil {
-		return requestBytes, isLastRequest, err
+		return requestBytes, isLastFragment, err
 	}
 
-	isLastRequest = (fragmentHeader & LastFragment) != 0
+	isLastFragment = (fragmentHeader & LastFragment) != 0
 	remainingFragmentLength := uint32(fragmentHeader & ^LastFragment)
 
 	messageBytesBuffer := new(bytes.Buffer)
@@ -237,13 +230,13 @@ func readNextRequestFragment(clientConnection net.Conn) (requestBytes []byte, is
 		bytesRead, err := clientConnection.Read(readBuffer)
 
 		if err != nil {
-			return requestBytes, isLastRequest, err
+			return requestBytes, isLastFragment, err
 		}
 
 		_, err = messageBytesBuffer.Write(readBuffer)
 
 		if err != nil {
-			return requestBytes, isLastRequest, err
+			return requestBytes, isLastFragment, err
 		}
 
 		remainingFragmentLength -= uint32(bytesRead)
@@ -252,7 +245,7 @@ func readNextRequestFragment(clientConnection net.Conn) (requestBytes []byte, is
 	requestBytes = make([]byte, messageBytesBuffer.Len())
 	copy(requestBytes, messageBytesBuffer.Bytes())
 
-	return requestBytes, isLastRequest, nil
+	return requestBytes, isLastFragment, nil
 }
 
 func writeResponseFragment(clientConnection net.Conn, responseBytes []byte, lastFragment bool) error {
