@@ -129,9 +129,9 @@ func (rpcService *rpcService) AddListener(network string, address string) (err e
 						rpcService.tcpClients <- clientConnection
 					}
 				}
-
-				rpcService.waitGroup.Done()
 			}
+
+			rpcService.waitGroup.Done()
 		}()
 	case "udp", "udp4", "udp6":
 		serverAddress, err := net.ResolveUDPAddr(network, address)
