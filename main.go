@@ -56,7 +56,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// TODO investigate contexts to run services in the background: https://blog.golang.org/context
 	go portmapService.HandleClients()
 
 	mountService := mountv3.NewMountService()
@@ -79,5 +78,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	nfsv3Service.HandleClients()
+	go nfsv3Service.HandleClients()
+
+	portmapService.WaitUntilDone()
+	mountService.WaitUntilDone()
+	nfsv3Service.WaitUntilDone()
 }

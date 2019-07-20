@@ -34,6 +34,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync"
 )
 
 // RPCRequest describes an RPC request
@@ -73,6 +74,7 @@ type rpcService struct {
 	udpListeners []*net.UDPConn
 	procedures   map[uint32]procedureHandler
 	listening    bool
+	waitGroup    sync.WaitGroup
 }
 
 // RPCService represents an RPC service
@@ -81,6 +83,7 @@ type RPCService interface {
 	HandleClients()
 	RegisterProcedure(uint32, procedureHandler)
 	RemoveAllListeners()
+	WaitUntilDone()
 }
 
 // NewRPCService returns a new RPC service
@@ -112,6 +115,7 @@ func (rpcService *rpcService) AddListener(network string, address string) (err e
 
 		rpcService.listening = true
 		rpcService.tcpListeners = append(rpcService.tcpListeners, tcpListener)
+		rpcService.waitGroup.Add(1)
 
 		go func() {
 			for rpcService.listening {
@@ -125,6 +129,8 @@ func (rpcService *rpcService) AddListener(network string, address string) (err e
 						rpcService.tcpClients <- clientConnection
 					}
 				}
+
+				rpcService.waitGroup.Done()
 			}
 		}()
 	case "udp", "udp4", "udp6":
@@ -144,6 +150,7 @@ func (rpcService *rpcService) AddListener(network string, address string) (err e
 
 		rpcService.listening = true
 		rpcService.udpListeners = append(rpcService.udpListeners, serverConnection)
+		rpcService.waitGroup.Add(1)
 
 		go func() {
 			requestBytes := make([]byte, 1024) // TODO: optimal/maximal UDP size?
@@ -167,6 +174,8 @@ func (rpcService *rpcService) AddListener(network string, address string) (err e
 					}
 				}
 			}
+
+			rpcService.waitGroup.Done()
 		}()
 	default:
 		return errors.New("Invalid network provided. Valid options are: tcp, tcp4, tpc6, udp, udp4 or udp6")
@@ -204,4 +213,8 @@ func (rpcService *rpcService) RemoveAllListeners() {
 		udpListener.Close()
 	}
 	rpcService.udpListeners = make([]*net.UDPConn, 0)
+}
+
+func (rpcService *rpcService) WaitUntilDone() {
+	rpcService.waitGroup.Wait()
 }
