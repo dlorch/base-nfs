@@ -39,16 +39,23 @@ import (
 	"github.com/dlorch/nfsv3/rpcv2"
 )
 
+// PortmapService ...
+type PortmapService struct {
+	rpcv2.RPCService
+}
+
 // TODO register service with portmapper
 
 // NewPortmapService ...
-func NewPortmapService() rpcv2.RPCService {
-	rpcService := rpcv2.NewRPCService("portmap", Program, Version)
+func NewPortmapService() *PortmapService {
+	portmapService := &PortmapService{
+		RPCService: *rpcv2.NewRPCService("portmap", Program, Version),
+	}
 
-	rpcService.RegisterProcedure(PortmapProcedureNull, procedureNull)
-	rpcService.RegisterProcedure(PortmapProcedureGetPort, procedureGetPort)
+	portmapService.RegisterProcedure(PortmapProcedureNull, procedureNull)
+	portmapService.RegisterProcedure(PortmapProcedureGetPort, procedureGetPort)
 
-	return rpcService
+	return portmapService
 }
 
 func getPort(mapping Mapping) (port uint32, err error) {

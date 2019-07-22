@@ -34,13 +34,20 @@ import (
 	"github.com/dlorch/nfsv3/rpcv2"
 )
 
+// MountService ...
+type MountService struct {
+	rpcv2.RPCService
+}
+
 // NewMountService ...
-func NewMountService() rpcv2.RPCService {
-	rpcService := rpcv2.NewRPCService("mount", Program, Version)
+func NewMountService() *MountService {
+	mountService := &MountService{
+		RPCService: *rpcv2.NewRPCService("mount", Program, Version),
+	}
 
-	rpcService.RegisterProcedure(MountProcedure3Null, mountProcedure3Null)
-	rpcService.RegisterProcedure(MountProcedure3Export, mountProcedure3export)
-	rpcService.RegisterProcedure(MountProcedure3Mount, mountProcedure3mount)
+	mountService.RegisterProcedure(MountProcedure3Null, mountProcedure3Null)
+	mountService.RegisterProcedure(MountProcedure3Export, mountProcedure3export)
+	mountService.RegisterProcedure(MountProcedure3Mount, mountProcedure3mount)
 
-	return rpcService
+	return mountService
 }

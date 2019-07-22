@@ -64,7 +64,8 @@ type udpClient struct {
 
 type procedureHandler func(*RPCRequest) *RPCResponse
 
-type rpcService struct {
+// RPCService represents an RPC service
+type RPCService struct {
 	shortName    string // friendly name (for logging)
 	program      uint32 // RPC program number
 	version      uint32 // RPC program version
@@ -77,18 +78,9 @@ type rpcService struct {
 	waitGroup    sync.WaitGroup
 }
 
-// RPCService represents an RPC service
-type RPCService interface {
-	AddListener(string, string) error
-	HandleClients()
-	RegisterProcedure(uint32, procedureHandler)
-	RemoveAllListeners()
-	WaitUntilDone()
-}
-
 // NewRPCService returns a new RPC service
-func NewRPCService(shortName string, program uint32, version uint32) RPCService {
-	rpcService := &rpcService{
+func NewRPCService(shortName string, program uint32, version uint32) *RPCService {
+	rpcService := &RPCService{
 		shortName:  shortName,
 		program:    program,
 		version:    version,
@@ -102,7 +94,7 @@ func NewRPCService(shortName string, program uint32, version uint32) RPCService 
 }
 
 // AddListener announces the local network address
-func (rpcService *rpcService) AddListener(network string, address string) (err error) {
+func (rpcService *RPCService) AddListener(network string, address string) (err error) {
 	switch network {
 	case "tcp", "tcp4", "tcp6":
 		tcpListener, err := net.Listen(network, address)
@@ -185,7 +177,7 @@ func (rpcService *rpcService) AddListener(network string, address string) (err e
 }
 
 // HandleClients accepts and processes clients
-func (rpcService *rpcService) HandleClients() {
+func (rpcService *RPCService) HandleClients() {
 	var err error
 
 	for {
@@ -203,11 +195,12 @@ func (rpcService *rpcService) HandleClients() {
 }
 
 // RegisterProcedure registers a callback function for a given RPC procedure number
-func (rpcService *rpcService) RegisterProcedure(procedure uint32, procedureHandler procedureHandler) {
+func (rpcService *RPCService) RegisterProcedure(procedure uint32, procedureHandler procedureHandler) {
 	rpcService.procedures[procedure] = procedureHandler
 }
 
-func (rpcService *rpcService) RemoveAllListeners() {
+// RemoveAllListeners ...
+func (rpcService *RPCService) RemoveAllListeners() {
 	rpcService.listening = false
 
 	for _, tcpListener := range rpcService.tcpListeners {
@@ -221,6 +214,7 @@ func (rpcService *rpcService) RemoveAllListeners() {
 	rpcService.udpListeners = make([]*net.UDPConn, 0)
 }
 
-func (rpcService *rpcService) WaitUntilDone() {
+// WaitUntilDone ...
+func (rpcService *RPCService) WaitUntilDone() {
 	rpcService.waitGroup.Wait()
 }

@@ -32,16 +32,23 @@ package nfsv3
 
 import "github.com/dlorch/nfsv3/rpcv2"
 
+// NFSService ...
+type NFSService struct {
+	rpcv2.RPCService
+}
+
 // NewNFSv3Service ...
-func NewNFSv3Service() rpcv2.RPCService {
-	rpcService := rpcv2.NewRPCService("nfsv3", Program, Version)
+func NewNFSv3Service() *NFSService {
+	nfsService := &NFSService{
+		RPCService: *rpcv2.NewRPCService("nfsv3", Program, Version),
+	}
 
-	rpcService.RegisterProcedure(NFSProcedure3Null, nfsProcedure3Null)
-	rpcService.RegisterProcedure(NFSProcedure3GetAttributes, nfsProcedure3GetAttributes)
-	rpcService.RegisterProcedure(NFSProcedure3Lookup, nfsProcedure3Lookup)
-	rpcService.RegisterProcedure(NFSProcedure3Access, nfsProcedure3Access)
-	rpcService.RegisterProcedure(NFSProcedure3FSInfo, nfsProcedure3FSInfo)
-	rpcService.RegisterProcedure(NFSProcedure3PathConf, nfsProcedure3PathConf)
+	nfsService.RegisterProcedure(NFSProcedure3Null, nfsProcedure3Null)
+	nfsService.RegisterProcedure(NFSProcedure3GetAttributes, nfsProcedure3GetAttributes)
+	nfsService.RegisterProcedure(NFSProcedure3Lookup, nfsProcedure3Lookup)
+	nfsService.RegisterProcedure(NFSProcedure3Access, nfsProcedure3Access)
+	nfsService.RegisterProcedure(NFSProcedure3FSInfo, nfsProcedure3FSInfo)
+	nfsService.RegisterProcedure(NFSProcedure3PathConf, nfsProcedure3PathConf)
 
-	return rpcService
+	return nfsService
 }
