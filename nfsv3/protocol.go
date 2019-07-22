@@ -38,8 +38,45 @@ import (
 	"github.com/dlorch/nfsv3/rpcv2"
 )
 
-// FSInfoArgs (struct FSINFOargs)
-type FSInfoArgs struct {
+// FileAttr3 (struct fattr3)
+type FileAttr3 struct {
+	typ              uint32
+	mode             uint32
+	nlink            uint32
+	uid              uint32
+	gid              uint32
+	size             uint64
+	used             uint64
+	specdata1        uint32
+	specdata2        uint32
+	fsid             uint64
+	fileid           uint64
+	atimeseconds     uint32
+	atimenanoseconds uint32
+	mtimeseconds     uint32
+	mtimenanoseconds uint32
+	ctimeseconds     uint32
+	ctimenanoseconds uint32
+}
+
+// GetAttr3Args (struct FSINFOargs)
+type GetAttr3Args struct {
+	FileHandle []byte
+}
+
+// GetAttr3ResultOK (struct GETATTR3resok)
+type GetAttr3ResultOK struct {
+	GetAttr3Result
+	ObjectAttributes FileAttr3
+}
+
+// GetAttr3Result (union GETATTR3res)
+type GetAttr3Result struct {
+	status uint32
+}
+
+// FSInfo3Args (struct FSINFOargs)
+type FSInfo3Args struct {
 	FileHandle []byte
 }
 
@@ -158,8 +195,66 @@ func nfsProcedure3Null(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
 }
 
 func nfsProcedure3GetAttributes(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
-	fmt.Println("nfsProcedure3GetAttributes")
-	return nil
+	// parse request
+	// TODO
+
+	// prepare result
+	getAttrResult := GetAttr3ResultOK{
+		GetAttr3Result: GetAttr3Result{
+			status: NFS3OK,
+		},
+		ObjectAttributes: FileAttr3{
+			typ:              2,
+			mode:             040777,
+			nlink:            4,
+			uid:              0,
+			gid:              0,
+			size:             4096,
+			used:             8192,
+			specdata1:        0,
+			specdata2:        0,
+			fsid:             0x388e4346cfc706a8,
+			fileid:           16,
+			atimeseconds:     1563137262,
+			atimenanoseconds: 460002975,
+			mtimeseconds:     1537128120,
+			mtimenanoseconds: 839607220,
+			ctimeseconds:     1537128120,
+			ctimenanoseconds: 839607220,
+		},
+	}
+
+	rpcResponse := &rpcv2.RPCResponse{
+		RPCMessage: rpcv2.RPCMsg{
+			XID:         request.RPCMessage.XID,
+			MessageType: rpcv2.Reply,
+		},
+		ReplyBody: rpcv2.ReplyBody{
+			ReplyStatus: rpcv2.MessageAccepted,
+		},
+		AcceptedReply: rpcv2.AcceptedReply{
+			Verifier: rpcv2.OpaqueAuth{
+				Flavor: rpcv2.AuthenticationNull,
+				Length: 0,
+			},
+			AcceptState: rpcv2.Success,
+		},
+	}
+
+	// create response
+	var resultBuffer = new(bytes.Buffer)
+
+	err := binary.Write(resultBuffer, binary.BigEndian, &getAttrResult)
+
+	if err != nil {
+		fmt.Println("Error: ", err.Error())
+		// TODO
+	}
+
+	rpcResponse.AcceptedReply.Results = make([]byte, resultBuffer.Len())
+	copy(rpcResponse.AcceptedReply.Results, resultBuffer.Bytes())
+
+	return rpcResponse
 }
 
 func nfsProcedure3Lookup(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
@@ -185,7 +280,7 @@ func nfsProcedure3FSInfo(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
 		// TODO
 	}
 
-	fsInfoArgs := FSInfoArgs{
+	fsInfoArgs := FSInfo3Args{
 		FileHandle: make([]byte, fileHandleLength), // TODO unsafe?
 	}
 
