@@ -71,6 +71,30 @@ type FSInfo3Result struct {
 	status uint32
 }
 
+// PathConf3Args (struct PATHCONF3args)
+type PathConf3Args struct {
+	FileHandle []byte
+}
+
+// PathConf3ResultOK (struct PATHCONF3resok)
+type PathConf3ResultOK struct {
+	PathConf3Result
+	objattributes   uint32 // TODO
+	linkmax         uint32
+	namemax         uint32
+	notrunc         uint32 // TODO bool
+	chownrestricted uint32 // TODO bool
+	caseinsensitive uint32 // TODO bool
+	casepreserving  uint32 // TODO bool
+}
+
+// TODO PATHCONF3resfail
+
+// PathConf3Result (union PATHCONF3res)
+type PathConf3Result struct {
+	status uint32
+}
+
 // Constants for mount protocol (RFC1813)
 const (
 	Program                    uint32 = 100003 // Mount service program number
@@ -225,6 +249,52 @@ func nfsProcedure3FSInfo(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
 }
 
 func nfsProcedure3PathConf(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
-	fmt.Println("nfsProcedure3PathConf")
-	return nil
+	// parse request
+	// TODO
+
+	// prepare result
+	pathConfResult := PathConf3ResultOK{
+		PathConf3Result: PathConf3Result{
+			status: NFS3OK,
+		},
+		objattributes:   0,
+		linkmax:         32000,
+		namemax:         255,
+		notrunc:         0,
+		chownrestricted: 1,
+		caseinsensitive: 0,
+		casepreserving:  1,
+	}
+
+	rpcResponse := &rpcv2.RPCResponse{
+		RPCMessage: rpcv2.RPCMsg{
+			XID:         request.RPCMessage.XID,
+			MessageType: rpcv2.Reply,
+		},
+		ReplyBody: rpcv2.ReplyBody{
+			ReplyStatus: rpcv2.MessageAccepted,
+		},
+		AcceptedReply: rpcv2.AcceptedReply{
+			Verifier: rpcv2.OpaqueAuth{
+				Flavor: rpcv2.AuthenticationNull,
+				Length: 0,
+			},
+			AcceptState: rpcv2.Success,
+		},
+	}
+
+	// create response
+	var resultBuffer = new(bytes.Buffer)
+
+	err := binary.Write(resultBuffer, binary.BigEndian, &pathConfResult)
+
+	if err != nil {
+		fmt.Println("Error: ", err.Error())
+		// TODO
+	}
+
+	rpcResponse.AcceptedReply.Results = make([]byte, resultBuffer.Len())
+	copy(rpcResponse.AcceptedReply.Results, resultBuffer.Bytes())
+
+	return rpcResponse
 }
