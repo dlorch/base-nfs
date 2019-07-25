@@ -62,6 +62,12 @@ type FileAttr3 struct {
 	ctimenanoseconds uint32
 }
 
+// PostOperationAttributes (union post_op_attr)
+type PostOperationAttributes struct {
+	AttributesFollow uint32 // bool
+	ObjectAttributes FileAttr3
+}
+
 // GetAttr3Args (struct FSINFOargs)
 type GetAttr3Args struct {
 	FileHandle []byte
@@ -75,6 +81,18 @@ type GetAttr3ResultOK struct {
 
 // GetAttr3Result (union GETATTR3res)
 type GetAttr3Result struct {
+	status uint32
+}
+
+// Access3ResultOK (union ACCESS3resok)
+type Access3ResultOK struct {
+	Access3Result
+	PostOperationAttributes
+	Access uint32
+}
+
+// Access3Result (union ACCESS3res)
+type Access3Result struct {
 	status uint32
 }
 
@@ -215,18 +233,45 @@ func nfsProcedure3GetAttributes(procedureArguments []byte) (rpcv2.Serializable, 
 	return getAttrResult, nil
 }
 
-// ----- NFSProcedure3Lookup
-
-func nfsProcedure3Lookup(procedureArguments []byte) (rpcv2.Serializable, error) {
-	fmt.Println("nfsProcedure3Access")
-	return nil, nil
-}
-
 // ----- NFSProcedure3Access
 
+// ToBytes serializes the FSInfo3ResultOK to be sent back to the client
+func (reply *Access3ResultOK) ToBytes() ([]byte, error) {
+	return rpcv2.SerializeFixedSizeStruct(reply)
+}
+
 func nfsProcedure3Access(procedureArguments []byte) (rpcv2.Serializable, error) {
-	fmt.Println("nfsProcedure3Access")
-	return nil, nil
+	// prepare result
+	fsInfoResult := &Access3ResultOK{
+		Access3Result: Access3Result{
+			status: NFS3OK,
+		},
+		PostOperationAttributes: PostOperationAttributes{
+			AttributesFollow: 1,
+			ObjectAttributes: FileAttr3{
+				typ:              2,
+				mode:             040777,
+				nlink:            4,
+				uid:              0,
+				gid:              0,
+				size:             4096,
+				used:             8192,
+				specdata1:        0,
+				specdata2:        0,
+				fsid:             0x388e4346cfc706a8,
+				fileid:           16,
+				atimeseconds:     1563137262,
+				atimenanoseconds: 460002975,
+				mtimeseconds:     1537128120,
+				mtimenanoseconds: 839607220,
+				ctimeseconds:     1537128120,
+				ctimenanoseconds: 839607220,
+			},
+		},
+		Access: 0x1f,
+	}
+
+	return fsInfoResult, nil
 }
 
 // ----- NFSProcedure3FSInfo
