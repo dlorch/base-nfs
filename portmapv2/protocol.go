@@ -37,8 +37,8 @@ import (
 	"github.com/dlorch/nfsv3/rpcv2"
 )
 
-// PortmapVoidReply is an empty reply
-type PortmapVoidReply struct{}
+// VoidReply is an empty reply
+type VoidReply struct{}
 
 // GetPortResult represents the requested port number
 type GetPortResult struct {
@@ -71,30 +71,19 @@ const (
 // ----- PortmapProcedureNull
 
 // ToBytes serializes the VoidReply to be sent back to the client
-func (reply *PortmapVoidReply) ToBytes() ([]byte, error) {
-	return []byte{}, nil
+func (reply *VoidReply) ToBytes() ([]byte, error) {
+	return rpcv2.SerializeFixedSizeStruct(reply)
 }
 
 func procedureNull(procedureArguments []byte) (rpcv2.Serializable, error) {
-	return &PortmapVoidReply{}, nil
+	return &VoidReply{}, nil
 }
 
 // ----- PortmapProcedureGetPort
 
 // ToBytes serializes the uint32 reply to be sent back to the client
 func (reply *GetPortResult) ToBytes() ([]byte, error) {
-	var responseBytes []byte
-	responseBuffer := new(bytes.Buffer)
-	err := binary.Write(responseBuffer, binary.BigEndian, &reply.Port)
-
-	if err != nil {
-		return responseBytes, err
-	}
-
-	responseBytes = make([]byte, responseBuffer.Len())
-	copy(responseBytes, responseBuffer.Bytes())
-
-	return responseBytes, err
+	return rpcv2.SerializeFixedSizeStruct(reply)
 }
 
 func procedureGetPort(procedureArguments []byte) (rpcv2.Serializable, error) {

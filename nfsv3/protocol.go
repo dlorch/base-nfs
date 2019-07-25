@@ -38,8 +38,8 @@ import (
 	"github.com/dlorch/nfsv3/rpcv2"
 )
 
-// NFS3VoidReply is an empty reply
-type NFS3VoidReply struct{}
+// VoidReply is an empty reply
+type VoidReply struct{}
 
 // FileAttr3 (struct fattr3)
 type FileAttr3 struct {
@@ -167,31 +167,19 @@ const (
 // ----- NFSProcedure3Null
 
 // ToBytes serializes the VoidReply to be sent back to the client
-func (reply *NFS3VoidReply) ToBytes() ([]byte, error) {
-	return []byte{}, nil
+func (reply *VoidReply) ToBytes() ([]byte, error) {
+	return rpcv2.SerializeFixedSizeStruct(reply)
 }
 
 func nfsProcedure3Null(procedureArguments []byte) (rpcv2.Serializable, error) {
-	return &NFS3VoidReply{}, nil
+	return &VoidReply{}, nil
 }
 
 // ----- NFSProcedure3GetAttributes
 
 // ToBytes serializes the GetAttr3ResultOK to be sent back to the client
 func (reply *GetAttr3ResultOK) ToBytes() ([]byte, error) {
-	var responseBuffer = new(bytes.Buffer)
-	var responseBytes = []byte{}
-
-	err := binary.Write(responseBuffer, binary.BigEndian, reply)
-
-	if err != nil {
-		return responseBytes, err
-	}
-
-	responseBytes = make([]byte, responseBuffer.Len())
-	copy(responseBytes, responseBuffer.Bytes())
-
-	return responseBytes, nil
+	return rpcv2.SerializeFixedSizeStruct(reply)
 }
 
 func nfsProcedure3GetAttributes(procedureArguments []byte) (rpcv2.Serializable, error) {
@@ -245,19 +233,7 @@ func nfsProcedure3Access(procedureArguments []byte) (rpcv2.Serializable, error) 
 
 // ToBytes serializes the FSInfo3ResultOK to be sent back to the client
 func (reply *FSInfo3ResultOK) ToBytes() ([]byte, error) {
-	var responseBuffer = new(bytes.Buffer)
-	var responseBytes = []byte{}
-
-	err := binary.Write(responseBuffer, binary.BigEndian, reply)
-
-	if err != nil {
-		return responseBytes, err
-	}
-
-	responseBytes = make([]byte, responseBuffer.Len())
-	copy(responseBytes, responseBuffer.Bytes())
-
-	return responseBytes, nil
+	return rpcv2.SerializeFixedSizeStruct(reply)
 }
 
 func nfsProcedure3FSInfo(procedureArguments []byte) (rpcv2.Serializable, error) {
@@ -310,19 +286,7 @@ func nfsProcedure3FSInfo(procedureArguments []byte) (rpcv2.Serializable, error) 
 
 // ToBytes serializes the PathConf3ResultOK to be sent back to the client
 func (reply *PathConf3ResultOK) ToBytes() ([]byte, error) {
-	var responseBuffer = new(bytes.Buffer)
-	var responseBytes = []byte{}
-
-	err := binary.Write(responseBuffer, binary.BigEndian, reply)
-
-	if err != nil {
-		return responseBytes, err
-	}
-
-	responseBytes = make([]byte, responseBuffer.Len())
-	copy(responseBytes, responseBuffer.Bytes())
-
-	return responseBytes, nil
+	return rpcv2.SerializeFixedSizeStruct(reply)
 }
 
 func nfsProcedure3PathConf(procedureArguments []byte) (rpcv2.Serializable, error) {

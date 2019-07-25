@@ -37,8 +37,8 @@ import (
 	"github.com/dlorch/nfsv3/rpcv2"
 )
 
-// MountVoidReply is an empty reply
-type MountVoidReply struct{}
+// VoidReply is an empty reply
+type VoidReply struct{}
 
 // GroupNode (RFC1813: struct groupnode)
 type GroupNode struct {
@@ -85,12 +85,12 @@ const (
 // ----- MountProcedure3Null
 
 // ToBytes serializes the VoidReply to be sent back to the client
-func (reply *MountVoidReply) ToBytes() ([]byte, error) {
-	return []byte{}, nil
+func (reply *VoidReply) ToBytes() ([]byte, error) {
+	return rpcv2.SerializeFixedSizeStruct(reply)
 }
 
 func mountProcedure3Null(procedureArguments []byte) (rpcv2.Serializable, error) {
-	return &MountVoidReply{}, nil
+	return &VoidReply{}, nil
 }
 
 // ----- MountProcedure3Export

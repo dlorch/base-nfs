@@ -459,6 +459,23 @@ func parseRPCCallBody(requestBytes []byte) (rpcCallBody CallBody, bytesRead int,
 	return rpcCallBody, len(requestBytes) - requestBuffer.Len(), nil
 }
 
+// SerializeFixedSizeStruct serializes any struct with only fixed-size elements (limitation of binary.Write) to be sent back to the client
+func SerializeFixedSizeStruct(reply interface{}) ([]byte, error) {
+	var responseBuffer = new(bytes.Buffer)
+	var responseBytes = []byte{}
+
+	err := binary.Write(responseBuffer, binary.BigEndian, reply)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	responseBytes = make([]byte, responseBuffer.Len())
+	copy(responseBytes, responseBuffer.Bytes())
+
+	return responseBytes, nil
+}
+
 // ToBytes serializes the AcceptedReplySuccess to be sent back to the client
 func (reply *AcceptedReplySuccess) ToBytes() ([]byte, error) {
 	responseBuffer := new(bytes.Buffer)
