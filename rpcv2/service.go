@@ -37,32 +37,13 @@ import (
 	"sync"
 )
 
-// RPCRequest describes an RPC request
-type RPCRequest struct {
-	RPCMessage      RPCMsg
-	CallBody        CallBody
-	Credentials     OpaqueAuth
-	CredentialsBody []byte // TODO parse byte array
-	Verifier        OpaqueAuth
-	VerifierBody    []byte // TODO parse byte array
-	RequestBody     []byte
-}
-
-// RPCResponse describes an RPC response
-type RPCResponse struct {
-	RPCMessage    RPCMsg
-	ReplyBody     ReplyBody
-	AcceptedReply AcceptedReply
-	RejectedReply RejectedReply
-}
-
 type udpClient struct {
 	requestBytes     []byte
 	serverConnection *net.UDPConn
 	clientAddress    *net.UDPAddr
 }
 
-type procedureHandler func(*RPCRequest) *RPCResponse
+type rpcProcedureHandler func([]byte) (Serializable, error)
 
 // RPCService represents an RPC service
 type RPCService struct {
@@ -73,7 +54,7 @@ type RPCService struct {
 	tcpListeners []net.Listener
 	udpClients   chan udpClient
 	udpListeners []*net.UDPConn
-	procedures   map[uint32]procedureHandler
+	procedures   map[uint32]rpcProcedureHandler
 	listening    bool
 	waitGroup    sync.WaitGroup
 }
@@ -86,7 +67,7 @@ func NewRPCService(shortName string, program uint32, version uint32) *RPCService
 		version:    version,
 		tcpClients: make(chan net.Conn),
 		udpClients: make(chan udpClient),
-		procedures: make(map[uint32]procedureHandler),
+		procedures: make(map[uint32]rpcProcedureHandler),
 		listening:  false,
 	}
 
@@ -145,16 +126,19 @@ func (rpcService *RPCService) AddListener(network string, address string) (err e
 		rpcService.waitGroup.Add(1)
 
 		go func() {
-			requestBytes := make([]byte, 1024) // TODO: optimal/maximal UDP size?
+			buffer := make([]byte, 1024) // TODO: optimal/maximal UDP size?
 
 			for rpcService.listening {
-				_, clientAddress, err := serverConnection.ReadFromUDP(requestBytes)
+				bytesRead, clientAddress, err := serverConnection.ReadFromUDP(buffer)
 
 				if rpcService.listening { // closing the udpListener in RemoveAllListeners() will cause a read error - ignore
 					if err != nil {
 						fmt.Printf("[%s] Error: %s\n", rpcService.shortName, err.Error())
 					} else {
 						fmt.Printf("[%s] Received UDP request from %s\n", rpcService.shortName, clientAddress)
+
+						requestBytes := make([]byte, bytesRead)
+						copy(requestBytes, buffer)
 
 						udpClient := udpClient{
 							requestBytes:     requestBytes,
@@ -195,11 +179,11 @@ func (rpcService *RPCService) HandleClients() {
 }
 
 // RegisterProcedure registers a callback function for a given RPC procedure number
-func (rpcService *RPCService) RegisterProcedure(procedure uint32, procedureHandler procedureHandler) {
-	rpcService.procedures[procedure] = procedureHandler
+func (rpcService *RPCService) RegisterProcedure(procedure uint32, rpcProcedureHandler rpcProcedureHandler) {
+	rpcService.procedures[procedure] = rpcProcedureHandler
 }
 
-// RemoveAllListeners ...
+// RemoveAllListeners stops all UDP and TCP listeners, and removes them
 func (rpcService *RPCService) RemoveAllListeners() {
 	rpcService.listening = false
 
@@ -214,7 +198,7 @@ func (rpcService *RPCService) RemoveAllListeners() {
 	rpcService.udpListeners = make([]*net.UDPConn, 0)
 }
 
-// WaitUntilDone ...
+// WaitUntilDone is a blocking call that waits until all listeners are stopped
 func (rpcService *RPCService) WaitUntilDone() {
 	rpcService.waitGroup.Wait()
 }

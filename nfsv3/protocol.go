@@ -38,6 +38,9 @@ import (
 	"github.com/dlorch/nfsv3/rpcv2"
 )
 
+// NFS3VoidReply is an empty reply
+type NFS3VoidReply struct{}
+
 // FileAttr3 (struct fattr3)
 type FileAttr3 struct {
 	typ              uint32
@@ -161,45 +164,42 @@ const (
 	NFS3OK                     uint32 = 0      // NFS3_OK
 )
 
-func nfsProcedure3Null(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
-	response := &rpcv2.RPCResponse{
-		RPCMessage: rpcv2.RPCMsg{
-			XID:         request.RPCMessage.XID,
-			MessageType: rpcv2.Reply,
-		},
-		ReplyBody: rpcv2.ReplyBody{
-			ReplyStatus: rpcv2.MessageAccepted,
-		},
-	}
+// ----- NFSProcedure3Null
 
-	verifier := rpcv2.OpaqueAuth{
-		Flavor: rpcv2.AuthenticationNull,
-		Length: 0,
-	}
-
-	if request.CallBody.ProgramVersion == Version {
-		response.AcceptedReply = rpcv2.AcceptedReply{
-			Verifier:    verifier,
-			AcceptState: rpcv2.Success,
-		}
-	} else {
-		response.AcceptedReply = rpcv2.AcceptedReply{
-			Verifier:                verifier,
-			AcceptState:             rpcv2.ProgramMismatch,
-			LowestVersionSupported:  Version,
-			HighestVersionSupported: Version,
-		}
-	}
-
-	return response
+// ToBytes serializes the VoidReply to be sent back to the client
+func (reply *NFS3VoidReply) ToBytes() ([]byte, error) {
+	return []byte{}, nil
 }
 
-func nfsProcedure3GetAttributes(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
+func nfsProcedure3Null(procedureArguments []byte) (rpcv2.Serializable, error) {
+	return &NFS3VoidReply{}, nil
+}
+
+// ----- NFSProcedure3GetAttributes
+
+// ToBytes serializes the GetAttr3ResultOK to be sent back to the client
+func (reply *GetAttr3ResultOK) ToBytes() ([]byte, error) {
+	var responseBuffer = new(bytes.Buffer)
+	var responseBytes = []byte{}
+
+	err := binary.Write(responseBuffer, binary.BigEndian, &reply)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	responseBytes = make([]byte, responseBuffer.Len())
+	copy(responseBytes, responseBuffer.Bytes())
+
+	return responseBytes, nil
+}
+
+func nfsProcedure3GetAttributes(procedureArguments []byte) (rpcv2.Serializable, error) {
 	// parse request
 	// TODO
 
 	// prepare result
-	getAttrResult := GetAttr3ResultOK{
+	getAttrResult := &GetAttr3ResultOK{
 		GetAttr3Result: GetAttr3Result{
 			status: NFS3OK,
 		},
@@ -224,52 +224,45 @@ func nfsProcedure3GetAttributes(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
 		},
 	}
 
-	rpcResponse := &rpcv2.RPCResponse{
-		RPCMessage: rpcv2.RPCMsg{
-			XID:         request.RPCMessage.XID,
-			MessageType: rpcv2.Reply,
-		},
-		ReplyBody: rpcv2.ReplyBody{
-			ReplyStatus: rpcv2.MessageAccepted,
-		},
-		AcceptedReply: rpcv2.AcceptedReply{
-			Verifier: rpcv2.OpaqueAuth{
-				Flavor: rpcv2.AuthenticationNull,
-				Length: 0,
-			},
-			AcceptState: rpcv2.Success,
-		},
-	}
+	return getAttrResult, nil
+}
 
-	// create response
-	var resultBuffer = new(bytes.Buffer)
+// ----- NFSProcedure3Lookup
 
-	err := binary.Write(resultBuffer, binary.BigEndian, &getAttrResult)
+func nfsProcedure3Lookup(procedureArguments []byte) (rpcv2.Serializable, error) {
+	fmt.Println("nfsProcedure3Access")
+	return nil, nil
+}
+
+// ----- NFSProcedure3Access
+
+func nfsProcedure3Access(procedureArguments []byte) (rpcv2.Serializable, error) {
+	fmt.Println("nfsProcedure3Access")
+	return nil, nil
+}
+
+// ----- NFSProcedure3FSInfo
+
+// ToBytes serializes the FSInfo3ResultOK to be sent back to the client
+func (reply *FSInfo3ResultOK) ToBytes() ([]byte, error) {
+	var responseBuffer = new(bytes.Buffer)
+	var responseBytes = []byte{}
+
+	err := binary.Write(responseBuffer, binary.BigEndian, &reply)
 
 	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		// TODO
+		return responseBytes, err
 	}
 
-	rpcResponse.AcceptedReply.Results = make([]byte, resultBuffer.Len())
-	copy(rpcResponse.AcceptedReply.Results, resultBuffer.Bytes())
+	responseBytes = make([]byte, responseBuffer.Len())
+	copy(responseBytes, responseBuffer.Bytes())
 
-	return rpcResponse
+	return responseBytes, nil
 }
 
-func nfsProcedure3Lookup(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
-	fmt.Println("nfsProcedure3Access")
-	return nil
-}
-
-func nfsProcedure3Access(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
-	fmt.Println("nfsProcedure3Access")
-	return nil
-}
-
-func nfsProcedure3FSInfo(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
+func nfsProcedure3FSInfo(procedureArguments []byte) (rpcv2.Serializable, error) {
 	// parse request
-	requestBuffer := bytes.NewBuffer(request.RequestBody)
+	requestBuffer := bytes.NewBuffer(procedureArguments)
 
 	var fileHandleLength uint32
 
@@ -292,7 +285,7 @@ func nfsProcedure3FSInfo(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
 	}
 
 	// prepare result
-	fsInfoResult := FSInfo3ResultOK{
+	fsInfoResult := &FSInfo3ResultOK{
 		FSInfo3Result: FSInfo3Result{
 			status: NFS3OK,
 		},
@@ -310,45 +303,34 @@ func nfsProcedure3FSInfo(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
 		properties:           0x0000001b,
 	}
 
-	rpcResponse := &rpcv2.RPCResponse{
-		RPCMessage: rpcv2.RPCMsg{
-			XID:         request.RPCMessage.XID,
-			MessageType: rpcv2.Reply,
-		},
-		ReplyBody: rpcv2.ReplyBody{
-			ReplyStatus: rpcv2.MessageAccepted,
-		},
-		AcceptedReply: rpcv2.AcceptedReply{
-			Verifier: rpcv2.OpaqueAuth{
-				Flavor: rpcv2.AuthenticationNull,
-				Length: 0,
-			},
-			AcceptState: rpcv2.Success,
-		},
-	}
-
-	// create response
-	var resultBuffer = new(bytes.Buffer)
-
-	err = binary.Write(resultBuffer, binary.BigEndian, &fsInfoResult)
-
-	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		// TODO
-	}
-
-	rpcResponse.AcceptedReply.Results = make([]byte, resultBuffer.Len())
-	copy(rpcResponse.AcceptedReply.Results, resultBuffer.Bytes())
-
-	return rpcResponse
+	return fsInfoResult, nil
 }
 
-func nfsProcedure3PathConf(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
+// ----- NFSProcedure3PathConf
+
+// ToBytes serializes the PathConf3ResultOK to be sent back to the client
+func (reply *PathConf3ResultOK) ToBytes() ([]byte, error) {
+	var responseBuffer = new(bytes.Buffer)
+	var responseBytes = []byte{}
+
+	err := binary.Write(responseBuffer, binary.BigEndian, &reply)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	responseBytes = make([]byte, responseBuffer.Len())
+	copy(responseBytes, responseBuffer.Bytes())
+
+	return responseBytes, nil
+}
+
+func nfsProcedure3PathConf(procedureArguments []byte) (rpcv2.Serializable, error) {
 	// parse request
 	// TODO
 
 	// prepare result
-	pathConfResult := PathConf3ResultOK{
+	pathConfResult := &PathConf3ResultOK{
 		PathConf3Result: PathConf3Result{
 			status: NFS3OK,
 		},
@@ -361,35 +343,5 @@ func nfsProcedure3PathConf(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
 		casepreserving:  1,
 	}
 
-	rpcResponse := &rpcv2.RPCResponse{
-		RPCMessage: rpcv2.RPCMsg{
-			XID:         request.RPCMessage.XID,
-			MessageType: rpcv2.Reply,
-		},
-		ReplyBody: rpcv2.ReplyBody{
-			ReplyStatus: rpcv2.MessageAccepted,
-		},
-		AcceptedReply: rpcv2.AcceptedReply{
-			Verifier: rpcv2.OpaqueAuth{
-				Flavor: rpcv2.AuthenticationNull,
-				Length: 0,
-			},
-			AcceptState: rpcv2.Success,
-		},
-	}
-
-	// create response
-	var resultBuffer = new(bytes.Buffer)
-
-	err := binary.Write(resultBuffer, binary.BigEndian, &pathConfResult)
-
-	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		// TODO
-	}
-
-	rpcResponse.AcceptedReply.Results = make([]byte, resultBuffer.Len())
-	copy(rpcResponse.AcceptedReply.Results, resultBuffer.Bytes())
-
-	return rpcResponse
+	return pathConfResult, nil
 }

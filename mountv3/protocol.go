@@ -33,10 +33,12 @@ package mountv3
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 
 	"github.com/dlorch/nfsv3/rpcv2"
 )
+
+// MountVoidReply is an empty reply
+type MountVoidReply struct{}
 
 // GroupNode (RFC1813: struct groupnode)
 type GroupNode struct {
@@ -80,60 +82,22 @@ const (
 	Mount3ErrorServerFault     uint32 = 10006  // MNT3ERR_SERVERFAULT: A failure on the server
 )
 
-func mountProcedure3Null(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
-	response := &rpcv2.RPCResponse{
-		RPCMessage: rpcv2.RPCMsg{
-			XID:         request.RPCMessage.XID,
-			MessageType: rpcv2.Reply,
-		},
-		ReplyBody: rpcv2.ReplyBody{
-			ReplyStatus: rpcv2.MessageAccepted,
-		},
-	}
+// ----- MountProcedure3Null
 
-	verifier := rpcv2.OpaqueAuth{
-		Flavor: rpcv2.AuthenticationNull,
-		Length: 0,
-	}
-
-	if request.CallBody.ProgramVersion == Version {
-		response.AcceptedReply = rpcv2.AcceptedReply{
-			Verifier:    verifier,
-			AcceptState: rpcv2.Success,
-		}
-	} else {
-		response.AcceptedReply = rpcv2.AcceptedReply{
-			Verifier:                verifier,
-			AcceptState:             rpcv2.ProgramMismatch,
-			LowestVersionSupported:  Version,
-			HighestVersionSupported: Version,
-		}
-	}
-
-	return response
+// ToBytes serializes the VoidReply to be sent back to the client
+func (reply *MountVoidReply) ToBytes() ([]byte, error) {
+	return []byte{}, nil
 }
 
-func mountProcedure3export(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
+func mountProcedure3Null(procedureArguments []byte) (rpcv2.Serializable, error) {
+	return &MountVoidReply{}, nil
+}
+
+// ----- MountProcedure3Export
+
+// ToBytes serializes the ExportNode to be sent back to the client
+func (reply *ExportNode) ToBytes() ([]byte, error) {
 	var responseBuffer = new(bytes.Buffer)
-
-	rpcMessage := rpcv2.RPCMsg{
-		XID:         request.RPCMessage.XID,
-		MessageType: rpcv2.Reply,
-	}
-
-	replyBody := rpcv2.ReplyBody{
-		ReplyStatus: rpcv2.MessageAccepted,
-	}
-
-	verifierReply := rpcv2.OpaqueAuth{
-		Flavor: rpcv2.AuthenticationNull,
-		Length: 0,
-	}
-
-	successReply := rpcv2.AcceptedReply{
-		Verifier:    verifierReply,
-		AcceptState: rpcv2.Success,
-	}
 
 	// --- mount service body
 
@@ -166,78 +130,53 @@ func mountProcedure3export(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
 
 	err = binary.Write(responseBuffer, binary.BigEndian, &valueFollowsNo)
 
-	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		// TODO
-	}
-
-	// --- create response
-
-	response := &rpcv2.RPCResponse{
-		RPCMessage:    rpcMessage,
-		ReplyBody:     replyBody,
-		AcceptedReply: successReply,
-	}
-
-	response.AcceptedReply.Results = make([]byte, responseBuffer.Len())
-	copy(response.AcceptedReply.Results, responseBuffer.Bytes())
-
-	return response
+	responseBytes := make([]byte, responseBuffer.Len())
+	copy(responseBytes, responseBuffer.Bytes())
+	return responseBytes, err
 }
 
-func mountProcedure3mount(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
+func mountProcedure3export(procedureArguments []byte) (rpcv2.Serializable, error) {
+	return &ExportNode{}, nil
+}
+
+// ----- MountProcedure3Mount
+
+// ToBytes serializes the MountResult3 to be sent back to the client
+func (reply *MountResult3) ToBytes() ([]byte, error) {
+	var responseBuffer = new(bytes.Buffer)
+
+	err := binary.Write(responseBuffer, binary.BigEndian, Mount3OK)
+
+	err = binary.Write(responseBuffer, binary.BigEndian, uint32(4))  // length of file handle
+	err = binary.Write(responseBuffer, binary.BigEndian, uint32(42)) // file handle
+
+	err = binary.Write(responseBuffer, binary.BigEndian, uint32(1))                // number of auth flavors
+	err = binary.Write(responseBuffer, binary.BigEndian, rpcv2.AuthenticationUNIX) // allowed flavors
+
+	responseBytes := make([]byte, responseBuffer.Len())
+	copy(responseBytes, responseBuffer.Bytes())
+	return responseBytes, err
+}
+
+func mountProcedure3mount(procedureArguments []byte) (rpcv2.Serializable, error) {
 	// parse request
-	requestBuffer := bytes.NewBuffer(request.RequestBody)
+	requestBuffer := bytes.NewBuffer(procedureArguments)
 
 	var dirPathLength uint32
 
 	err := binary.Read(requestBuffer, binary.BigEndian, &dirPathLength)
 
 	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		// TODO
+		return nil, err
 	}
 
-	dirPathName := make([]byte, dirPathLength) // TODO unsafe?
+	dirPathName := make([]byte, dirPathLength) // TODO check MNTPATHLEN
 
 	err = binary.Read(requestBuffer, binary.BigEndian, &dirPathName)
 
 	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		// TODO
+		return nil, err
 	}
 
-	// prepare result
-	var resultBuffer = new(bytes.Buffer)
-
-	err = binary.Write(resultBuffer, binary.BigEndian, Mount3OK)
-
-	err = binary.Write(resultBuffer, binary.BigEndian, uint32(4))  // length of file handle
-	err = binary.Write(resultBuffer, binary.BigEndian, uint32(42)) // file handle
-
-	err = binary.Write(resultBuffer, binary.BigEndian, uint32(1))                // number of auth flavors
-	err = binary.Write(resultBuffer, binary.BigEndian, rpcv2.AuthenticationUNIX) // allowed flavors
-
-	// create response
-	response := &rpcv2.RPCResponse{
-		RPCMessage: rpcv2.RPCMsg{
-			XID:         request.RPCMessage.XID,
-			MessageType: rpcv2.Reply,
-		},
-		ReplyBody: rpcv2.ReplyBody{
-			ReplyStatus: rpcv2.MessageAccepted,
-		},
-		AcceptedReply: rpcv2.AcceptedReply{
-			Verifier: rpcv2.OpaqueAuth{
-				Flavor: rpcv2.AuthenticationNull,
-				Length: 0,
-			},
-			AcceptState: rpcv2.Success,
-		},
-	}
-
-	response.AcceptedReply.Results = make([]byte, resultBuffer.Len())
-	copy(response.AcceptedReply.Results, resultBuffer.Bytes())
-
-	return response
+	return &MountResult3{}, nil
 }

@@ -38,46 +38,75 @@ import (
 	"net"
 )
 
-// RPCMsg describes the request/response RPC header (RFC1057: struct rpc_msg)
-type RPCMsg struct {
+// Serializable ...
+type Serializable interface {
+	ToBytes() ([]byte, error)
+}
+
+// RPCMessage describes the request/response RPC header (RFC1057: struct rpc_msg)
+type RPCMessage struct {
 	XID         uint32
 	MessageType uint32
-}
-
-// CallBody describes the body of a CALL request (RFC1057: struct call_body)
-type CallBody struct {
-	RPCVersion     uint32
-	Program        uint32
-	ProgramVersion uint32
-	Procedure      uint32
-}
-
-// ReplyBody describes the body of a REPLY to an RPC call (RFC1057: union reply_body)
-type ReplyBody struct {
-	ReplyStatus uint32
-}
-
-// AcceptedReply (RFC1057: struct accepted_reply)
-type AcceptedReply struct {
-	Verifier                OpaqueAuth
-	AcceptState             uint32
-	Results                 []byte
-	LowestVersionSupported  uint32
-	HighestVersionSupported uint32
-}
-
-// RejectedReply (RFC1057: rjected_reply)
-type RejectedReply struct {
-	RejectState                uint32
-	LowestSupportedRPCVersion  uint32
-	HighestSupportedRPCVersion uint32
-	// TODO auth_stat stat
 }
 
 // OpaqueAuth describes the type of authentication used (RFC1057: struct opaque_auth)
 type OpaqueAuth struct {
 	Flavor uint32
-	Length uint32
+	Body   []byte
+}
+
+// CallBody describes the body of a CALL request (RFC1057: struct call_body)
+type CallBody struct {
+	RPCMessage
+	RPCVersion     uint32
+	Program        uint32
+	ProgramVersion uint32
+	Procedure      uint32
+	Credentials    OpaqueAuth
+	Verifier       OpaqueAuth
+}
+
+// AcceptedReplySuccess (RFC1057: struct accepted_reply)
+type AcceptedReplySuccess struct {
+	RPCMessage
+	ReplyStatus uint32 // must be MessageAccepted = 0
+	Verifier    OpaqueAuth
+	AcceptState uint32 // must be Success = 0
+}
+
+// AcceptedReplyProgramMismatch (RFC1057: struct accepted_reply)
+type AcceptedReplyProgramMismatch struct {
+	RPCMessage
+	ReplyStatus             uint32 // must be MessageAccepted = 0
+	Verifier                OpaqueAuth
+	AcceptState             uint32 // must be ProgramMismatch = 2
+	LowestVersionSupported  uint32
+	HighestVersionSupported uint32
+}
+
+// AcceptedReply (RFC1057: struct accepted_reply)
+type AcceptedReply struct {
+	RPCMessage
+	ReplyStatus uint32 // must be MessageAccepted = 0
+	Verifier    OpaqueAuth
+	AcceptState uint32 // must be ProgramUnavailable = 1, ProcedureUnavailable = 3 or GarbageArguments = 4
+}
+
+// RejectedReplyRPCMismatch (RFC1057: rejected_reply)
+type RejectedReplyRPCMismatch struct {
+	RPCMessage
+	ReplyStatus                uint32 // must be MessageDenied = 1
+	RejectState                uint32 // must be RPCMismatch = 0
+	LowestSupportedRPCVersion  uint32
+	HighestSupportedRPCVersion uint32
+}
+
+// RejectedReplyAuthenticationError (RFC1057: rejected_reply)
+type RejectedReplyAuthenticationError struct {
+	RPCMessage
+	ReplyStatus         uint32 // must be MessageDenied = 1
+	RejectState         uint32 // must be AuthenticationError = 1
+	AuthenticationState uint32
 }
 
 // Authentication (RFC1057: enum auth_flavor)
@@ -90,30 +119,31 @@ const (
 
 // Constants for RPCv2 (RFC 1057)
 const (
-	RPCVersion           uint32 = 2       // RPC version number
-	Call                 uint32 = 0       // Message type CALL
-	Reply                uint32 = 1       // Message type REPLY
-	MessageAccepted      uint32 = 0       // Reply to a call message
-	MessageDenied        uint32 = 1       // Reply to a call message
-	Success              uint32 = 0       // RPC executed succesfully
-	ProgramUnavailable   uint32 = 1       // remote hasn't exported program
-	ProgramMismatch      uint32 = 2       // remote can't support version
-	ProcedureUnavailable uint32 = 3       // program can't support procedure
-	GarbageArguments     uint32 = 4       // procedure can't decode params
-	RPCMismatch          uint32 = 0       // RPC version number != 2
-	AuthenticationError  uint32 = 1       // remote can't authenticate caller
-	LastFragment         uint32 = 1 << 31 // last fragment delimiter for record marking (RM)
+	RPCVersion              uint32 = 2       // RPC version number
+	Call                    uint32 = 0       // Message type CALL
+	Reply                   uint32 = 1       // Message type REPLY
+	MessageAccepted         uint32 = 0       // Reply to a call message
+	MessageDenied           uint32 = 1       // Reply to a call message
+	Success                 uint32 = 0       // RPC executed succesfully
+	ProgramUnavailable      uint32 = 1       // remote hasn't exported program
+	ProgramMismatch         uint32 = 2       // remote can't support version
+	ProcedureUnavailable    uint32 = 3       // program can't support procedure
+	GarbageArguments        uint32 = 4       // procedure can't decode params
+	RPCMismatch             uint32 = 0       // RPC version number != 2
+	AuthenticationError     uint32 = 1       // remote can't authenticate caller
+	LastFragment            uint32 = 1 << 31 // last fragment delimiter for record marking (RM)
+	OpaqueAuthBodyMaxLength uint32 = 400     // maximal length of OpaqueAuth.Body
 )
 
 // handleTCPClient handles TCP client connections, reads requests and delimits them into
 // individual messages (RFC 1057: 10. Record Marking Standard) for further processing
-func handleTCPClient(clientConnection net.Conn, rpcProcedures map[uint32]procedureHandler) error {
+func handleTCPClient(clientConnection net.Conn, rpcProcedures map[uint32]rpcProcedureHandler) error {
 	var responseBytes []byte
-	requestBytes, isLastFragment, err := readNextRequestFragment(clientConnection)
+	requestBytes, isLastFragment, err := readNextRequestFragment(clientConnection) // TODO not sure this is correct, shouldn't fragments be concatenated?
 
 	for {
 		if err != nil {
-			if err.Error() == "EOF" {
+			if err.Error() == "EOF" { // all good, we reached the end of the TCP request
 				return nil
 			}
 			return err
@@ -136,7 +166,7 @@ func handleTCPClient(clientConnection net.Conn, rpcProcedures map[uint32]procedu
 }
 
 // handleUDPClient handles UDP connections
-func handleUDPClient(requestBytes []byte, serverConnection *net.UDPConn, clientAddress *net.UDPAddr, rpcProcedures map[uint32]procedureHandler) error {
+func handleUDPClient(requestBytes []byte, serverConnection *net.UDPConn, clientAddress *net.UDPAddr, rpcProcedures map[uint32]rpcProcedureHandler) error {
 	responseBytes, err := handleClient(requestBytes, rpcProcedures)
 
 	if err != nil {
@@ -148,60 +178,119 @@ func handleUDPClient(requestBytes []byte, serverConnection *net.UDPConn, clientA
 	return nil
 }
 
-func handleClient(requestBytes []byte, rpcProcedures map[uint32]procedureHandler) (responseBytes []byte, err error) {
-	rpcRequest, err := parseRPCRequest(requestBytes)
+func handleClient(requestBytes []byte, rpcProcedures map[uint32]rpcProcedureHandler) (responseBytes []byte, err error) {
+	rpcRequest, argumentsIndex, err := parseRPCCallBody(requestBytes)
 
 	if err != nil {
 		return responseBytes, errors.New("Malformed RPC request")
 	}
 
-	var rpcResponse *RPCResponse
+	var rpcResponse Serializable
 
-	if rpcRequest.CallBody.RPCVersion != RPCVersion {
-		rpcResponse = &RPCResponse{
-			RPCMessage: RPCMsg{
+	if rpcRequest.RPCVersion != RPCVersion {
+		rpcResponse = &RejectedReplyRPCMismatch{
+			RPCMessage: RPCMessage{
 				XID:         rpcRequest.RPCMessage.XID,
 				MessageType: Reply,
 			},
-			ReplyBody: ReplyBody{
-				ReplyStatus: MessageDenied,
-			},
-			RejectedReply: RejectedReply{
-				RejectState:                RPCMismatch,
-				LowestSupportedRPCVersion:  RPCVersion,
-				HighestSupportedRPCVersion: RPCVersion,
-			},
+			ReplyStatus:                MessageDenied,
+			RejectState:                RPCMismatch,
+			LowestSupportedRPCVersion:  RPCVersion,
+			HighestSupportedRPCVersion: RPCVersion,
 		}
-	} else {
-		rpcProcedure, found := rpcProcedures[rpcRequest.CallBody.Procedure]
 
-		fmt.Println("Procedure ", rpcRequest.CallBody.Procedure, " for program ", rpcRequest.CallBody.Program)
-
-		if !found {
-			rpcResponse = &RPCResponse{
-				RPCMessage: RPCMsg{
-					XID:         rpcRequest.RPCMessage.XID,
-					MessageType: Reply,
-				},
-				ReplyBody: ReplyBody{
-					ReplyStatus: MessageAccepted,
-				},
-				AcceptedReply: AcceptedReply{
-					Verifier: OpaqueAuth{
-						Flavor: AuthenticationNull,
-						Length: 0,
-					},
-					AcceptState: ProcedureUnavailable,
-				},
-			}
-		} else {
-			rpcResponse = rpcProcedure(&rpcRequest)
-		}
+		return rpcResponse.ToBytes()
 	}
 
-	responseBytes, err = serializeRPCResponse(rpcResponse)
+	rpcProcedure, found := rpcProcedures[rpcRequest.Procedure]
 
-	return responseBytes, err
+	// TODO how to check for ProgramMismatch?
+	fmt.Println("Procedure ", rpcRequest.Procedure, " for program ", rpcRequest.Program)
+
+	if !found {
+		rpcResponse = &AcceptedReply{
+			RPCMessage: RPCMessage{
+				XID:         rpcRequest.RPCMessage.XID,
+				MessageType: Reply,
+			},
+			ReplyStatus: MessageAccepted,
+			Verifier: OpaqueAuth{
+				Flavor: AuthenticationNull,
+				Body:   []byte{},
+			},
+			AcceptState: ProcedureUnavailable,
+		}
+
+		return rpcResponse.ToBytes()
+	}
+
+	var procedureResponse Serializable
+
+	procedureResponse, err = rpcProcedure(requestBytes[argumentsIndex:])
+
+	if err != nil {
+		fmt.Println("Error: ", err.Error())
+
+		rpcResponse = &AcceptedReply{
+			RPCMessage: RPCMessage{
+				XID:         rpcRequest.RPCMessage.XID,
+				MessageType: Reply,
+			},
+			ReplyStatus: MessageAccepted,
+			Verifier: OpaqueAuth{
+				Flavor: AuthenticationNull,
+				Body:   []byte{},
+			},
+			AcceptState: GarbageArguments,
+		}
+
+		return rpcResponse.ToBytes()
+	}
+
+	rpcResponse = &AcceptedReplySuccess{
+		RPCMessage: RPCMessage{
+			XID:         rpcRequest.RPCMessage.XID,
+			MessageType: Reply,
+		},
+		ReplyStatus: MessageAccepted,
+		Verifier: OpaqueAuth{
+			Flavor: AuthenticationNull,
+			Body:   []byte{},
+		},
+		AcceptState: Success,
+	}
+
+	var response []byte
+	responseBuffer := new(bytes.Buffer)
+
+	response, err = rpcResponse.ToBytes()
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	_, err = responseBuffer.Write(response)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	response, err = procedureResponse.ToBytes()
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	_, err = responseBuffer.Write(response)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	response = make([]byte, responseBuffer.Len())
+	copy(response, responseBuffer.Bytes())
+
+	return response, nil
 }
 
 func readNextRequestFragment(clientConnection net.Conn) (requestBytes []byte, isLastFragment bool, err error) {
@@ -280,113 +369,145 @@ func writeResponseFragment(clientConnection net.Conn, responseBytes []byte, last
 	return nil
 }
 
-func parseRPCRequest(requestBytes []byte) (rpcRequest RPCRequest, err error) {
+func parseRPCCallBody(requestBytes []byte) (rpcCallBody CallBody, bytesRead int, err error) {
 	requestBuffer := bytes.NewBuffer(requestBytes)
 
-	err = binary.Read(requestBuffer, binary.BigEndian, &rpcRequest.RPCMessage)
+	err = binary.Read(requestBuffer, binary.BigEndian, &rpcCallBody.RPCMessage)
 
 	if err != nil {
-		return rpcRequest, err
+		return rpcCallBody, len(requestBytes) - requestBuffer.Len(), err
 	}
 
-	err = binary.Read(requestBuffer, binary.BigEndian, &rpcRequest.CallBody)
+	err = binary.Read(requestBuffer, binary.BigEndian, &rpcCallBody.RPCVersion)
 
 	if err != nil {
-		return rpcRequest, err
+		return rpcCallBody, len(requestBytes) - requestBuffer.Len(), err
 	}
 
-	err = binary.Read(requestBuffer, binary.BigEndian, &rpcRequest.Credentials)
+	err = binary.Read(requestBuffer, binary.BigEndian, &rpcCallBody.Program)
 
 	if err != nil {
-		return rpcRequest, err
+		return rpcCallBody, len(requestBytes) - requestBuffer.Len(), err
 	}
 
-	rpcRequest.CredentialsBody = make([]byte, rpcRequest.Credentials.Length) // TODO insecure
-
-	err = binary.Read(requestBuffer, binary.BigEndian, &rpcRequest.CredentialsBody)
+	err = binary.Read(requestBuffer, binary.BigEndian, &rpcCallBody.ProgramVersion)
 
 	if err != nil {
-		return rpcRequest, err
+		return rpcCallBody, len(requestBytes) - requestBuffer.Len(), err
 	}
 
-	err = binary.Read(requestBuffer, binary.BigEndian, &rpcRequest.Verifier)
+	err = binary.Read(requestBuffer, binary.BigEndian, &rpcCallBody.Procedure)
 
 	if err != nil {
-		return rpcRequest, err
+		return rpcCallBody, len(requestBytes) - requestBuffer.Len(), err
 	}
 
-	rpcRequest.VerifierBody = make([]byte, rpcRequest.Verifier.Length) // TODO insecure
-
-	err = binary.Read(requestBuffer, binary.BigEndian, &rpcRequest.VerifierBody)
+	err = binary.Read(requestBuffer, binary.BigEndian, &rpcCallBody.Credentials.Flavor)
 
 	if err != nil {
-		return rpcRequest, err
+		return rpcCallBody, len(requestBytes) - requestBuffer.Len(), err
 	}
 
-	rpcRequest.RequestBody = make([]byte, requestBuffer.Len())
-	copy(rpcRequest.RequestBody, requestBuffer.Bytes())
+	var credentialsLength uint32
 
-	return rpcRequest, nil
+	err = binary.Read(requestBuffer, binary.BigEndian, &credentialsLength)
+
+	if err != nil {
+		return rpcCallBody, len(requestBytes) - requestBuffer.Len(), err
+	}
+
+	if credentialsLength > OpaqueAuthBodyMaxLength {
+		return rpcCallBody, len(requestBytes) - requestBuffer.Len(),
+			fmt.Errorf("Invalid length '%d' for Credentials in CallBody. Maximum value of '%d' allowed", credentialsLength, OpaqueAuthBodyMaxLength)
+	}
+
+	rpcCallBody.Credentials.Body = make([]byte, credentialsLength)
+
+	err = binary.Read(requestBuffer, binary.BigEndian, &rpcCallBody.Credentials.Body)
+
+	if err != nil {
+		return rpcCallBody, len(requestBytes) - requestBuffer.Len(), err
+	}
+
+	err = binary.Read(requestBuffer, binary.BigEndian, &rpcCallBody.Verifier.Flavor)
+
+	if err != nil {
+		return rpcCallBody, len(requestBytes) - requestBuffer.Len(), err
+	}
+
+	var verifierLength uint32
+
+	err = binary.Read(requestBuffer, binary.BigEndian, &verifierLength)
+
+	if err != nil {
+		return rpcCallBody, len(requestBytes) - requestBuffer.Len(), err
+	}
+
+	if verifierLength > OpaqueAuthBodyMaxLength {
+		return rpcCallBody, len(requestBytes) - requestBuffer.Len(),
+			fmt.Errorf("Invalid length '%d' for Verifier in CallBody. Maximum value of '%d' allowed", verifierLength, OpaqueAuthBodyMaxLength)
+	}
+
+	rpcCallBody.Verifier.Body = make([]byte, verifierLength)
+
+	err = binary.Read(requestBuffer, binary.BigEndian, &rpcCallBody.Verifier.Body)
+
+	if err != nil {
+		return rpcCallBody, len(requestBytes) - requestBuffer.Len(), err
+	}
+
+	return rpcCallBody, len(requestBytes) - requestBuffer.Len(), nil
 }
 
-func serializeRPCResponse(rpcResponse *RPCResponse) (responseBytes []byte, err error) {
+// ToBytes serializes the AcceptedReplySuccess to be sent back to the client
+func (reply *AcceptedReplySuccess) ToBytes() ([]byte, error) {
 	responseBuffer := new(bytes.Buffer)
+	responseBytes := []byte{}
 
-	err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse.RPCMessage)
+	err := binary.Write(responseBuffer, binary.BigEndian, &reply.RPCMessage)
 
 	if err != nil {
 		return responseBytes, err
 	}
 
-	switch rpcResponse.ReplyBody.ReplyStatus {
-	case MessageAccepted:
-		err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse.ReplyBody)
+	if reply.ReplyStatus != MessageAccepted {
+		return responseBytes, fmt.Errorf("Invalid ReplyStatus '%d' in AcceptedReplySuccess. Expecting '%d'", reply.ReplyStatus, MessageAccepted)
+	}
 
-		if err != nil {
-			return responseBytes, err
-		}
+	err = binary.Write(responseBuffer, binary.BigEndian, &reply.ReplyStatus)
 
-		err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse.AcceptedReply.Verifier)
+	if err != nil {
+		return responseBytes, err
+	}
 
-		if err != nil {
-			return responseBytes, err
-		}
+	err = binary.Write(responseBuffer, binary.BigEndian, &reply.Verifier.Flavor)
 
-		err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse.AcceptedReply.AcceptState)
+	if err != nil {
+		return responseBytes, err
+	}
 
-		if err != nil {
-			return responseBytes, err
-		}
+	verifierLength := uint32(len(reply.Verifier.Body))
 
-		switch rpcResponse.AcceptedReply.AcceptState {
-		case Success:
-			_, err = responseBuffer.Write(rpcResponse.AcceptedReply.Results)
+	err = binary.Write(responseBuffer, binary.BigEndian, &verifierLength)
 
-			if err != nil {
-				return responseBytes, err
-			}
-		case ProgramMismatch:
-			err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse.AcceptedReply.LowestVersionSupported)
+	if err != nil {
+		return responseBytes, err
+	}
 
-			if err != nil {
-				return responseBytes, err
-			}
+	_, err = responseBuffer.Write(reply.Verifier.Body)
 
-			err = binary.Write(responseBuffer, binary.BigEndian, &rpcResponse.AcceptedReply.HighestVersionSupported)
+	if err != nil {
+		return responseBytes, err
+	}
 
-			if err != nil {
-				return responseBytes, err
-			}
-		case ProgramUnavailable, ProcedureUnavailable, GarbageArguments:
-			// void (intentionally left blank)
-		default:
-			return responseBytes, fmt.Errorf("Unrecognized AcceptState value '%d' in AcceptedReply", rpcResponse.AcceptedReply.AcceptState)
-		}
-	case MessageDenied:
-		// TODO
-		return responseBytes, fmt.Errorf("Unimplemented ReplyStatus value '%d' in ReplyBody", rpcResponse.ReplyBody.ReplyStatus)
-	default:
-		return responseBytes, fmt.Errorf("Invalid ReplyStatus value '%d' in ReplyBody", rpcResponse.ReplyBody.ReplyStatus)
+	if reply.AcceptState != Success {
+		return responseBytes, fmt.Errorf("Invalid AcceptState '%d' in AcceptedReplySuccess. Expecting '%d'", reply.AcceptState, Success)
+	}
+
+	err = binary.Write(responseBuffer, binary.BigEndian, &reply.AcceptState)
+
+	if err != nil {
+		return responseBytes, err
 	}
 
 	responseBytes = make([]byte, responseBuffer.Len())
@@ -394,3 +515,117 @@ func serializeRPCResponse(rpcResponse *RPCResponse) (responseBytes []byte, err e
 
 	return responseBytes, nil
 }
+
+/*
+// ToBytes ..
+func (reply *AcceptedReplyProgramMismatch) ToBytes() ([]byte, error) {
+
+}
+*/
+
+// ToBytes serializes the AcceptedReply to be sent back to the client
+func (reply *AcceptedReply) ToBytes() ([]byte, error) {
+	responseBuffer := new(bytes.Buffer)
+	responseBytes := []byte{}
+
+	err := binary.Write(responseBuffer, binary.BigEndian, &reply.RPCMessage)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	if reply.ReplyStatus != MessageAccepted {
+		return responseBytes, fmt.Errorf("Invalid ReplyStatus '%d' in AcceptedReplySuccess. Expecting '%d'", reply.ReplyStatus, MessageAccepted)
+	}
+
+	err = binary.Write(responseBuffer, binary.BigEndian, &reply.ReplyStatus)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	err = binary.Write(responseBuffer, binary.BigEndian, &reply.Verifier.Flavor)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	verifierLength := uint32(len(reply.Verifier.Body))
+
+	err = binary.Write(responseBuffer, binary.BigEndian, &verifierLength)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	_, err = responseBuffer.Write(reply.Verifier.Body)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	if reply.AcceptState != ProgramUnavailable && reply.AcceptState != ProcedureUnavailable && reply.AcceptState != GarbageArguments {
+		return responseBytes, fmt.Errorf("Invalid AcceptState '%d' in AcceptedReplySuccess. Expecting '%d'", reply.AcceptState, Success)
+	}
+
+	err = binary.Write(responseBuffer, binary.BigEndian, &reply.AcceptState)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	responseBytes = make([]byte, responseBuffer.Len())
+	copy(responseBytes, responseBuffer.Bytes())
+
+	return responseBytes, nil
+}
+
+// ToBytes serializes the RejectedReplyRPCMismatch to be sent back to the client
+func (reply *RejectedReplyRPCMismatch) ToBytes() ([]byte, error) {
+	responseBuffer := new(bytes.Buffer)
+	responseBytes := []byte{}
+
+	err := binary.Write(responseBuffer, binary.BigEndian, &reply.RPCMessage)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	if reply.ReplyStatus != MessageDenied {
+		return responseBytes, fmt.Errorf("Invalid ReplyStatus '%d' in RejectedReplyRPCMismatch. Expecting '%d'", reply.RejectState, MessageDenied)
+	}
+
+	err = binary.Write(responseBuffer, binary.BigEndian, &reply.ReplyStatus)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	if reply.RejectState != RPCMismatch {
+		return responseBytes, fmt.Errorf("Invalid RejectState '%d' in RejectedReplyRPCMismatch. Expecting '%d'", reply.RejectState, RPCMismatch)
+	}
+
+	err = binary.Write(responseBuffer, binary.BigEndian, &reply.LowestSupportedRPCVersion)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	err = binary.Write(responseBuffer, binary.BigEndian, &reply.HighestSupportedRPCVersion)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	responseBytes = make([]byte, responseBuffer.Len())
+	copy(responseBytes, responseBuffer.Bytes())
+
+	return responseBytes, nil
+}
+
+/*
+// ToBytes ..
+func (reply *RejectedReplyAuthenticationError) ToBytes() ([]byte, error) {
+
+}
+*/

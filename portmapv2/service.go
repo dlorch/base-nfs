@@ -57,9 +57,7 @@ func NewPortmapService() *PortmapService {
 	return portmapService
 }
 
-func getPort(mapping Mapping) (port uint32, err error) {
-	port = ProgramNotAvailable
-
+func getPort(mapping Mapping) uint32 {
 	fmt.Println("getPort")
 	fmt.Println(mapping.Program)
 	fmt.Println(mapping.Protocol)
@@ -67,10 +65,10 @@ func getPort(mapping Mapping) (port uint32, err error) {
 
 	// TODO check mapping.Version (1) == mountv3.Version (3)
 	if mapping.Program == mountv3.Program && mapping.Protocol == IPProtocolTCP {
-		return 892, nil
+		return 892
 	} else if mapping.Program == nfsv3.Program && mapping.Protocol == IPProtocolTCP && mapping.Version == nfsv3.Version {
-		return 2049, nil
+		return 2049
 	}
 
-	return port, fmt.Errorf("Unregistered program '%d' with protocol '%d'", mapping.Program, mapping.Protocol)
+	return ProgramNotAvailable
 }

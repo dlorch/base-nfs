@@ -33,11 +33,17 @@ package portmapv2
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 
-	"github.com/dlorch/nfsv3/nfsv3"
 	"github.com/dlorch/nfsv3/rpcv2"
 )
+
+// PortmapVoidReply is an empty reply
+type PortmapVoidReply struct{}
+
+// GetPortResult represents the requested port number
+type GetPortResult struct {
+	Port uint32
+}
 
 // Mapping of (program, version, protocol) to port number (RFC1057: struct_mapping)
 type Mapping struct {
@@ -62,95 +68,48 @@ const (
 	ProgramNotAvailable     uint32 = 0      // Port value of zero means the program has not been registered
 )
 
-// the null procedure is actually quite important - NFS clients use it to
-// 'probe' for valid NFS server versions
-func procedureNull(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
-	response := &rpcv2.RPCResponse{
-		RPCMessage: rpcv2.RPCMsg{
-			XID:         request.RPCMessage.XID,
-			MessageType: rpcv2.Reply,
-		},
-		ReplyBody: rpcv2.ReplyBody{
-			ReplyStatus: rpcv2.MessageAccepted,
-		},
-	}
+// ----- PortmapProcedureNull
 
-	verifier := rpcv2.OpaqueAuth{
-		Flavor: rpcv2.AuthenticationNull,
-		Length: 0,
-	}
-
-	if request.CallBody.ProgramVersion == nfsv3.Version {
-		response.AcceptedReply = rpcv2.AcceptedReply{
-			Verifier:    verifier,
-			AcceptState: rpcv2.Success,
-		}
-	} else {
-		response.AcceptedReply = rpcv2.AcceptedReply{
-			Verifier:                verifier,
-			AcceptState:             rpcv2.ProgramMismatch,
-			LowestVersionSupported:  nfsv3.Version, // The "program version" indicated by the client seems to apply
-			HighestVersionSupported: nfsv3.Version, // to the NFS services as a whole, not the portmapper service alone
-		}
-	}
-
-	return response
+// ToBytes serializes the VoidReply to be sent back to the client
+func (reply *PortmapVoidReply) ToBytes() ([]byte, error) {
+	return []byte{}, nil
 }
 
-func procedureGetPort(request *rpcv2.RPCRequest) *rpcv2.RPCResponse {
-	fmt.Println("procedureGetPort")
+func procedureNull(procedureArguments []byte) (rpcv2.Serializable, error) {
+	return &PortmapVoidReply{}, nil
+}
 
-	var requestBody = bytes.NewBuffer(request.RequestBody)
+// ----- PortmapProcedureGetPort
+
+// ToBytes serializes the uint32 reply to be sent back to the client
+func (reply *GetPortResult) ToBytes() ([]byte, error) {
+	var responseBytes []byte
+	responseBuffer := new(bytes.Buffer)
+	err := binary.Write(responseBuffer, binary.BigEndian, &reply.Port)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	responseBytes = make([]byte, responseBuffer.Len())
+	copy(responseBytes, responseBuffer.Bytes())
+
+	return responseBytes, err
+}
+
+func procedureGetPort(procedureArguments []byte) (rpcv2.Serializable, error) {
+	var requestBody = bytes.NewBuffer(procedureArguments)
 	var mapping Mapping
 
 	err := binary.Read(requestBody, binary.BigEndian, &mapping)
 
 	if err != nil {
-		fmt.Println("Error: ", err.Error())
-		// TODO: send error message back to client
-	}
-
-	rpcMessage := rpcv2.RPCMsg{
-		XID:         request.RPCMessage.XID,
-		MessageType: rpcv2.Reply,
-	}
-
-	replyBody := rpcv2.ReplyBody{
-		ReplyStatus: rpcv2.MessageAccepted,
-	}
-
-	verifierReply := rpcv2.OpaqueAuth{
-		Flavor: rpcv2.AuthenticationNull,
-		Length: 0,
-	}
-
-	successReply := rpcv2.AcceptedReply{
-		Verifier:    verifierReply,
-		AcceptState: rpcv2.Success,
+		return &GetPortResult{Port: ProgramNotAvailable}, err
 	}
 
 	// TODO check callBody.Version == portmapv2.Version
 
-	result, err := getPort(mapping)
+	port := getPort(mapping)
 
-	fmt.Println(result)
-
-	var responseBuffer = new(bytes.Buffer)
-
-	err = binary.Write(responseBuffer, binary.BigEndian, &result) // TODO check err
-
-	if err != nil {
-		fmt.Println("Error: ", err.Error())
-	}
-
-	response := &rpcv2.RPCResponse{
-		RPCMessage:    rpcMessage,
-		ReplyBody:     replyBody,
-		AcceptedReply: successReply,
-	}
-
-	response.AcceptedReply.Results = make([]byte, responseBuffer.Len())
-	copy(response.AcceptedReply.Results, responseBuffer.Bytes())
-
-	return response
+	return &GetPortResult{Port: port}, nil
 }
