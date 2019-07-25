@@ -182,7 +182,7 @@ func (reply *GetAttr3ResultOK) ToBytes() ([]byte, error) {
 	var responseBuffer = new(bytes.Buffer)
 	var responseBytes = []byte{}
 
-	err := binary.Write(responseBuffer, binary.BigEndian, &reply)
+	err := binary.Write(responseBuffer, binary.BigEndian, reply)
 
 	if err != nil {
 		return responseBytes, err
@@ -248,7 +248,7 @@ func (reply *FSInfo3ResultOK) ToBytes() ([]byte, error) {
 	var responseBuffer = new(bytes.Buffer)
 	var responseBytes = []byte{}
 
-	err := binary.Write(responseBuffer, binary.BigEndian, &reply)
+	err := binary.Write(responseBuffer, binary.BigEndian, reply)
 
 	if err != nil {
 		return responseBytes, err
@@ -313,7 +313,7 @@ func (reply *PathConf3ResultOK) ToBytes() ([]byte, error) {
 	var responseBuffer = new(bytes.Buffer)
 	var responseBytes = []byte{}
 
-	err := binary.Write(responseBuffer, binary.BigEndian, &reply)
+	err := binary.Write(responseBuffer, binary.BigEndian, reply)
 
 	if err != nil {
 		return responseBytes, err
