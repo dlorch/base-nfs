@@ -38,6 +38,12 @@ import (
 	"github.com/dlorch/nfsv3/rpcv2"
 )
 
+// Cookie3 (cookie3)
+type Cookie3 uint64
+
+// CookieVerifier3 (cookieverf3)
+type CookieVerifier3 [NFS3CookieVerifierSize]byte
+
 // VoidReply is an empty reply
 type VoidReply struct{}
 
@@ -153,6 +159,40 @@ type PathConf3Result struct {
 	status uint32
 }
 
+// PostOperationFileHandle3 (union post_op_fh3)
+type PostOperationFileHandle3 struct {
+	HandleFollows uint32 // bool
+	Handle        []byte // TODO struct nfs_fh3
+}
+
+// EntryPlus3 (struct entryplus3)
+type EntryPlus3 struct {
+	FileID         uint64
+	FileName3      string
+	Cookie         Cookie3
+	NameAttributes PostOperationAttributes
+	NameHandle     PostOperationFileHandle3
+}
+
+// DirListPlus3 (struct dirlistplus3)
+type DirListPlus3 struct {
+	Entries []EntryPlus3
+	EOF     uint32 // bool
+}
+
+// ReadDirPlus3ResultOK (struct READDIRPLUS3resok)
+type ReadDirPlus3ResultOK struct {
+	ReadDirPlus3Result
+	DirectoryAttributes PostOperationAttributes
+	CookieVerifier      CookieVerifier3
+	Reply               DirListPlus3
+}
+
+// ReadDirPlus3Result (union READDIRPLUS3res)
+type ReadDirPlus3Result struct {
+	status uint32
+}
+
 // Constants for mount protocol (RFC1813)
 const (
 	Program                    uint32 = 100003 // Mount service program number
@@ -180,6 +220,7 @@ const (
 	NFSProcedure3PathConf      uint32 = 20     // NFSPROC3_PATHCONF
 	NFSProcedure3Commint       uint32 = 21     // NFSPROC3_COMMIT
 	NFS3OK                     uint32 = 0      // NFS3_OK
+	NFS3CookieVerifierSize     uint32 = 8      // The size in bytes of the opaque cookie verifier passed by READDIR and READDIRPLUS (NFS3_COOKIEVERFSIZE)
 )
 
 // ----- NFSProcedure3Null
@@ -353,4 +394,194 @@ func nfsProcedure3PathConf(procedureArguments []byte) (rpcv2.Serializable, error
 	}
 
 	return pathConfResult, nil
+}
+
+// ----- NFSProcedure3ReadDirPlus
+
+// ToBytes serializes the PathConf3ResultOK to be sent back to the client
+func (reply *ReadDirPlus3ResultOK) ToBytes() ([]byte, error) {
+	var responseBuffer = new(bytes.Buffer)
+	var responseBytes = []byte{}
+
+	err := binary.Write(responseBuffer, binary.BigEndian, &reply.ReadDirPlus3Result)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	err = binary.Write(responseBuffer, binary.BigEndian, &reply.DirectoryAttributes)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	err = binary.Write(responseBuffer, binary.BigEndian, &reply.CookieVerifier)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	for _, entry := range reply.Reply.Entries {
+		valueFollowsYes := uint32(1)
+
+		err = binary.Write(responseBuffer, binary.BigEndian, &valueFollowsYes)
+
+		if err != nil {
+			return responseBytes, err
+		}
+
+		err = binary.Write(responseBuffer, binary.BigEndian, &entry.FileID)
+
+		if err != nil {
+			return responseBytes, err
+		}
+
+		fileNameLength := uint32(len(entry.FileName3))
+		numFillBytes := int(4 - (fileNameLength % 4))
+		fillByte := uint8(0)
+
+		err = binary.Write(responseBuffer, binary.BigEndian, &fileNameLength)
+
+		if err != nil {
+			return responseBytes, err
+		}
+
+		_, err = responseBuffer.WriteString(entry.FileName3)
+
+		if err != nil {
+			return responseBytes, err
+		}
+
+		for i := 0; i < numFillBytes; i++ {
+			err = binary.Write(responseBuffer, binary.BigEndian, &fillByte)
+
+			if err != nil {
+				return responseBytes, err
+			}
+		}
+
+		err = binary.Write(responseBuffer, binary.BigEndian, &entry.Cookie)
+
+		if err != nil {
+			return responseBytes, err
+		}
+
+		err = binary.Write(responseBuffer, binary.BigEndian, &entry.NameAttributes)
+
+		if err != nil {
+			return responseBytes, err
+		}
+
+		err = binary.Write(responseBuffer, binary.BigEndian, &entry.NameHandle.HandleFollows)
+
+		if err != nil {
+			return responseBytes, err
+		}
+
+		handleLength := uint32(len(entry.NameHandle.Handle))
+
+		err = binary.Write(responseBuffer, binary.BigEndian, &handleLength)
+
+		if err != nil {
+			return responseBytes, err
+		}
+
+		_, err = responseBuffer.Write(entry.NameHandle.Handle)
+
+		if err != nil {
+			return responseBytes, err
+		}
+	}
+
+	valueFollowsNo := uint32(0)
+
+	err = binary.Write(responseBuffer, binary.BigEndian, &valueFollowsNo)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	err = binary.Write(responseBuffer, binary.BigEndian, &reply.Reply.EOF)
+
+	if err != nil {
+		return responseBytes, err
+	}
+
+	responseBytes = make([]byte, responseBuffer.Len())
+	copy(responseBytes, responseBuffer.Bytes())
+
+	return responseBytes, nil
+}
+
+func nfsProcedure3ReadDirPlus(procedureArguments []byte) (rpcv2.Serializable, error) {
+	// parse request
+	// TODO
+
+	// prepare result
+	readDirPlusResult := &ReadDirPlus3ResultOK{
+		ReadDirPlus3Result: ReadDirPlus3Result{
+			status: NFS3OK,
+		},
+		DirectoryAttributes: PostOperationAttributes{
+			AttributesFollow: 1,
+			ObjectAttributes: FileAttr3{
+				typ:              2,
+				mode:             040777,
+				nlink:            4,
+				uid:              0,
+				gid:              0,
+				size:             4096,
+				used:             8192,
+				specdata1:        0,
+				specdata2:        0,
+				fsid:             0x388e4346cfc706a8,
+				fileid:           16,
+				atimeseconds:     1563137262,
+				atimenanoseconds: 460002975,
+				mtimeseconds:     1537128120,
+				mtimenanoseconds: 839607220,
+				ctimeseconds:     1537128120,
+				ctimenanoseconds: 839607220,
+			},
+		},
+		CookieVerifier: [NFS3CookieVerifierSize]byte{},
+		Reply: DirListPlus3{
+			Entries: []EntryPlus3{
+				EntryPlus3{
+					FileID:    40243830,
+					FileName3: "gopher.go",
+					Cookie:    3621999153351014942,
+					NameAttributes: PostOperationAttributes{
+						AttributesFollow: 1,
+						ObjectAttributes: FileAttr3{
+							typ:              1,
+							mode:             040777,
+							nlink:            4,
+							uid:              0,
+							gid:              0,
+							size:             4096,
+							used:             8192,
+							specdata1:        0,
+							specdata2:        0,
+							fsid:             0x388e4346cfc706a8,
+							fileid:           40243830,
+							atimeseconds:     1563137262,
+							atimenanoseconds: 460002975,
+							mtimeseconds:     1537128120,
+							mtimenanoseconds: 839607220,
+							ctimeseconds:     1537128120,
+							ctimenanoseconds: 839607220,
+						},
+					},
+					NameHandle: PostOperationFileHandle3{
+						HandleFollows: 1,
+						Handle:        []byte{},
+					},
+				},
+			},
+			EOF: 1,
+		},
+	}
+
+	return readDirPlusResult, nil
 }

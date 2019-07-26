@@ -48,6 +48,7 @@ func NewNFSv3Service() *NFSService {
 	nfsService.RegisterProcedure(NFSProcedure3Access, nfsProcedure3Access)
 	nfsService.RegisterProcedure(NFSProcedure3FSInfo, nfsProcedure3FSInfo)
 	nfsService.RegisterProcedure(NFSProcedure3PathConf, nfsProcedure3PathConf)
+	nfsService.RegisterProcedure(NFSProcedure3ReadDirPlus, nfsProcedure3ReadDirPlus)
 
 	return nfsService
 }
