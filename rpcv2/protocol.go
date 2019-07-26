@@ -459,7 +459,7 @@ func parseRPCCallBody(requestBytes []byte) (rpcCallBody CallBody, bytesRead int,
 	return rpcCallBody, len(requestBytes) - requestBuffer.Len(), nil
 }
 
-// SerializeFixedSizeStruct serializes any struct with only fixed-size elements (limitation of binary.Write) to be sent back to the client
+// SerializeFixedSizeStruct serializes any struct with only fixed-size elements (limitation of binary.Write), i.e. no strings and no dynamically sized byte arrays
 func SerializeFixedSizeStruct(reply interface{}) ([]byte, error) {
 	var responseBuffer = new(bytes.Buffer)
 	var responseBytes = []byte{}
