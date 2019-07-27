@@ -9,7 +9,9 @@ $ ls /mnt
 gopher.go
 ```
 
-Go Concepts:
+Golang concepts and best practices considered:
+* [What's in a name?]
 * [Object Oriented Inheritance in Go]
 
+[What's in a name?]: https://talks.golang.org/2014/names.slide
 [Object Oriented Inheritance in Go]: https://hackthology.com/object-oriented-inheritance-in-go.html

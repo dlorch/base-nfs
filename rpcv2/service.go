@@ -126,10 +126,16 @@ func (rpcService *RPCService) AddListener(network string, address string) (err e
 		rpcService.waitGroup.Add(1)
 
 		go func() {
-			buffer := make([]byte, 1024) // TODO: optimal/maximal UDP size?
+			// What is the largest UDP datagram for an RPC request? RFC1057 does not mention a maximum size.
+			// The Linux NFS page https://wiki.linux-nfs.org/wiki/index.php?title=NetworkTracing&oldid=2945#RPC_over_UDP_datagrams
+			// talks about a maximum size of 64 KB, without giving any sources. This value probably originates
+			// from the maximum size of an UDP datagram (not considering the header sizes). Although such a big
+			// UDP datagram is unlikely to arrive over the Internet due to fragmentation, let's a assume a
+			// safe upper limit.
+			b := make([]byte, 65536)
 
 			for rpcService.listening {
-				bytesRead, clientAddress, err := serverConnection.ReadFromUDP(buffer)
+				n, clientAddress, err := serverConnection.ReadFromUDP(b)
 
 				if rpcService.listening { // closing the udpListener in RemoveAllListeners() will cause a read error - ignore
 					if err != nil {
@@ -137,8 +143,8 @@ func (rpcService *RPCService) AddListener(network string, address string) (err e
 					} else {
 						fmt.Printf("[%s] Received UDP request from %s\n", rpcService.shortName, clientAddress)
 
-						requestBytes := make([]byte, bytesRead)
-						copy(requestBytes, buffer)
+						requestBytes := make([]byte, n)
+						copy(requestBytes, b)
 
 						udpClient := udpClient{
 							requestBytes:     requestBytes,
