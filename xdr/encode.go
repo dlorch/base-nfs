@@ -88,7 +88,9 @@ func Marshal(v interface{}) ([]byte, error) {
 		err := binary.Write(b, binary.BigEndian, uint32(val.Uint()))
 		return b.Bytes(), err
 	default:
-		return buf, &UnsupportedTypeError{Type: val.Type()}
+		if val.IsValid() {
+			return buf, &UnsupportedTypeError{Type: val.Type()}
+		}
 	}
 	return buf, nil
 }
