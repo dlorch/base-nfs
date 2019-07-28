@@ -36,12 +36,12 @@ func Marshal(v interface{}) ([]byte, error) {
 		}
 	case reflect.Uint64:
 		b := new(bytes.Buffer)
-		binary.Write(b, binary.BigEndian, val.Uint())
-		return b.Bytes(), nil
+		err := binary.Write(b, binary.BigEndian, val.Uint())
+		return b.Bytes(), err
 	case reflect.Uint32:
 		b := new(bytes.Buffer)
-		binary.Write(b, binary.BigEndian, uint32(val.Uint()))
-		return b.Bytes(), nil
+		err := binary.Write(b, binary.BigEndian, uint32(val.Uint()))
+		return b.Bytes(), err
 	default:
 		return buf, &UnsupportedTypeError{Type: val.Type()}
 	}
