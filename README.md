@@ -10,8 +10,12 @@ gopher.go
 ```
 
 Golang concepts and best practices considered:
+* [Standard Go Project Layout]
 * [What's in a name?]
+* [Twelve Go Best Practices]
 * [Object Oriented Inheritance in Go]
 
+[Standard Go Project Layout]: https://github.com/golang-standards/project-layout
 [What's in a name?]: https://talks.golang.org/2014/names.slide
+[Twelve Go Best Practices]: https://talks.golang.org/2013/bestpractices.slide
 [Object Oriented Inheritance in Go]: https://hackthology.com/object-oriented-inheritance-in-go.html
