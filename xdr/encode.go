@@ -7,6 +7,15 @@ import (
 	"reflect"
 )
 
+// UnsupportedTypeError is returned by Marshal when attempting to
+// encode an unsupported value type
+type UnsupportedTypeError struct {
+	Type reflect.Type
+}
+
+func (e *UnsupportedTypeError) Error() string {
+	return "xdr: unsupported type: " + e.Type.String()
+}
 // Marshal serializes a value in XDR format to a byte sequence representation
 func Marshal(v interface{}) ([]byte, error) {
 	var buf []byte
@@ -34,7 +43,7 @@ func Marshal(v interface{}) ([]byte, error) {
 		binary.Write(b, binary.BigEndian, uint32(val.Uint()))
 		return b.Bytes(), nil
 	default:
-		fmt.Println("Unrecognized type:", val.Kind())
+		return buf, &UnsupportedTypeError{Type: val.Type()}
 	}
 	return buf, nil
 }
