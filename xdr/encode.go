@@ -26,13 +26,13 @@ func Marshal(v interface{}) ([]byte, error) {
 			}
 		}
 	case reflect.Uint64:
-		buffer := new(bytes.Buffer)
-		binary.Write(buffer, binary.BigEndian, val.Uint())
-		return buffer.Bytes(), nil
+		b := new(bytes.Buffer)
+		binary.Write(b, binary.BigEndian, val.Uint())
+		return b.Bytes(), nil
 	case reflect.Uint32:
-		buffer := new(bytes.Buffer)
-		binary.Write(buffer, binary.BigEndian, uint32(val.Uint()))
-		return buffer.Bytes(), nil
+		b := new(bytes.Buffer)
+		binary.Write(b, binary.BigEndian, uint32(val.Uint()))
+		return b.Bytes(), nil
 	default:
 		fmt.Println("Unrecognized type:", val.Kind())
 	}
