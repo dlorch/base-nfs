@@ -112,7 +112,7 @@ var dynamicallySizedValues = &DynamicallySizedValues{
 	Name: "Gopher",                  // encodes as: length + bytes + padding (total length must be multiple of four)
 }
 
-var dynamicallySizedValuesExpect = []byte{0, 0, 0, 5, 41, 22, 13, 4, 15, 6, 0, 0, 0, 6, 71, 111, 112, 104, 101, 114, 0, 0}
+var dynamicallySizedValuesExpect = []byte{0, 0, 0, 5, 41, 22, 13, 4, 15, 0, 0, 0, 6, 71, 111, 112, 104, 101, 114, 0, 0}
 
 func TestEncodeDynamicallySizedValues(t *testing.T) {
 	got, err := xdr.Marshal(dynamicallySizedValues)
