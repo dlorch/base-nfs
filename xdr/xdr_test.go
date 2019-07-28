@@ -32,8 +32,9 @@ func TestEncodeEmpty(t *testing.T) {
 }
 
 type Simple struct {
-	Type uint32
-	Size uint64
+	Type   uint32
+	Size   uint64
+	hidden uint32
 }
 
 var simple = &Simple{
@@ -120,5 +121,110 @@ func TestEncodeDynamicallySizedValues(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, dynamicallySizedValuesExpect) {
 		t.Fatalf("Expected %v but got %v", dynamicallySizedValuesExpect, got)
+	}
+}
+
+type SizeLimit struct {
+	Data []byte `xdr:"maxsize=5"`
+}
+
+var sizeLimitInputBytes = []byte{1, 2, 3, 4, 5, 6}
+
+var sizeLimitExpect = &SizeLimit{
+	Data: []byte{1, 2, 3, 4, 5},
+}
+
+func TestDecodeSizeLimit(t *testing.T) {
+	t.Error("Unimplemented")
+}
+
+type OptionalAttribute struct {
+	AttributeFollows uint32 `xdr:"switch"`
+	Attribute        Simple `xdr:"case=1"`
+}
+
+var optionalAttributeYes = &OptionalAttribute{
+	AttributeFollows: 1,
+	Attribute: Simple{
+		Type: 12,
+		Size: 33,
+	},
+}
+
+var OptionalAttributeNo = &OptionalAttribute{
+	AttributeFollows: 0,
+}
+
+var optionalAttributeYesExpect = []byte{0, 0, 0, 1, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 33}
+
+var optionalAttributeNoExpect = []byte{0, 0, 0, 0}
+
+func TestEncodeOptionalAttributes(t *testing.T) {
+	got, err := xdr.Marshal(optionalAttributeYes)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, optionalAttributeYesExpect) {
+		t.Fatalf("Expected %v but got %v", optionalAttributeYesExpect, got)
+	}
+
+	got, err = xdr.Marshal(OptionalAttributeNo)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, optionalAttributeNoExpect) {
+		t.Fatalf("Expected %v but got %v", optionalAttributeNoExpect, got)
+	}
+}
+
+type Union struct {
+	Status  uint32        `xdr:"switch"`
+	Success SuccessResult `xdr:"case=0"`
+	Failure FailureResult `xdr:"default"`
+}
+
+type SuccessResult struct {
+	First  uint32
+	Second uint32
+}
+
+type FailureResult struct {
+	Error uint32
+}
+
+var unionSuccess = &Union{
+	Status: 0,
+	Success: SuccessResult{
+		First:  44,
+		Second: 36,
+	},
+}
+
+var unionFailure = &Union{
+	Status: 1,
+	Failure: FailureResult{
+		Error: 99,
+	},
+}
+
+var unionSuccessExpect = []byte{0, 0, 0, 0, 0, 0, 0, 44, 0, 0, 0, 36}
+
+var unionFailureExpect = []byte{0, 0, 0, 1, 0, 0, 0, 99}
+
+func TestEncodeUnion(t *testing.T) {
+	got, err := xdr.Marshal(unionSuccess)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, unionSuccessExpect) {
+		t.Fatalf("Expected %v but got %v", unionSuccessExpect, got)
+	}
+
+	got, err = xdr.Marshal(unionFailure)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, unionFailureExpect) {
+		t.Fatalf("Expected %v but got %v", unionFailureExpect, got)
 	}
 }
