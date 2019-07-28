@@ -7,6 +7,18 @@ import (
 	"github.com/dlorch/nfsv3/xdr"
 )
 
+var nilExpect = []byte{}
+
+func TestEncodeNil(t *testing.T) {
+	got, err := xdr.Marshal(nil)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, nilExpect) {
+		t.Fatalf("Expected %v but got %v", nilExpect, got)
+	}
+}
+
 type Simple struct {
 	Type uint32
 	Size uint64
