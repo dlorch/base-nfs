@@ -46,6 +46,12 @@ func Marshal(v interface{}) ([]byte, error) {
 				buf = append(buf, b...)
 			}
 		}
+	case reflect.Array:
+		b := make([]byte, val.Len())
+		for i := 0; i < val.Len(); i++ {
+			b[i] = val.Index(i).Interface().(byte)
+		}
+		return b, nil
 	case reflect.Slice:
 		a, ok := v.([]byte)
 		if !ok {
