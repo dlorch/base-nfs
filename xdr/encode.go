@@ -7,25 +7,16 @@ import (
 	"reflect"
 )
 
-// UnsupportedTypeError is returned by Marshal when attempting to
-// encode an unsupported value type
-type UnsupportedTypeError struct {
-	Type reflect.Type
-}
-
-func (e *UnsupportedTypeError) Error() string {
-	return "xdr: unsupported type: " + e.Type.String()
 }
 
 // MarshalError is returned by Marshal when an unexpected error
 // occurred during the marshalling process
 type MarshalError struct {
-	T reflect.Type
-	S string
+	s string
 }
 
 func (e *MarshalError) Error() string {
-	return "xdr: error for type " + e.T.String() + ": " + e.S
+	return "xdr: " + e.s
 }
 
 // Marshal serializes a value in XDR format to a byte sequence representation
@@ -55,7 +46,7 @@ func Marshal(v interface{}) ([]byte, error) {
 	case reflect.Slice:
 		a, ok := v.([]byte)
 		if !ok {
-			return buf, &MarshalError{T: val.Type(), S: "type assertion to []byte failed"}
+			return buf, &MarshalError{s: "error for type " + val.Type().String() + ": type assertion to []byte failed"}
 		}
 		l := uint32(len(a))
 		b := new(bytes.Buffer)
@@ -95,7 +86,7 @@ func Marshal(v interface{}) ([]byte, error) {
 		return b.Bytes(), err
 	default:
 		if val.IsValid() {
-			return buf, &UnsupportedTypeError{Type: val.Type()}
+			return buf, &MarshalError{s: "unsupported type: " + val.Type().String()}
 		}
 	}
 	return buf, nil
