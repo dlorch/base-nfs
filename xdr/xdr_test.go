@@ -7,13 +7,10 @@ import (
 	"github.com/dlorch/nfsv3/xdr"
 )
 
-func TestEncodeVoid(t *testing.T) {
+func TestEncodeNil(t *testing.T) {
 	got, err := xdr.Marshal(nil)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-	if len(got) != 0 {
-		t.Fatalf("Expected %v but got %v", []byte{}, got)
+	if err == nil {
+		t.Fatalf("Expected error, but got %v", got)
 	}
 }
 
@@ -21,13 +18,15 @@ type Empty struct{}
 
 var empty = &Empty{}
 
+var emptyExpect = []byte{}
+
 func TestEncodeEmpty(t *testing.T) {
 	got, err := xdr.Marshal(empty)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 	if len(got) != 0 {
-		t.Fatalf("Expected %v but got %v", []byte{}, got)
+		t.Fatalf("Expected %v but got %v", emptyExpect, got)
 	}
 }
 

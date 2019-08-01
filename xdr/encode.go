@@ -22,8 +22,12 @@ func (e *MarshalError) Error() string {
 // Marshal serializes a value in XDR format to a byte sequence representation
 func Marshal(v interface{}) ([]byte, error) {
 	var buf []byte
-
 	val := reflect.ValueOf(v)
+
+	if !val.IsValid() {
+		return buf, &MarshalError{s: "invalid zero value for 'v'"}
+	}
+
 	switch val.Kind() {
 	case reflect.Ptr:
 		return Marshal(val.Elem().Interface())
