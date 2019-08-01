@@ -17,77 +17,97 @@ func (e *MarshalError) Error() string {
 	return "xdr: " + e.s
 }
 
+type encodeState struct {
+	bytes.Buffer // accumulated output
+}
+
 // Marshal serializes a value in XDR format to a byte sequence representation
 func Marshal(v interface{}) ([]byte, error) {
-	var buf []byte
+	e := newEncodeState()
+
+	err := e.marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	buf := append([]byte(nil), e.Bytes()...)
+
+	return buf, nil
+}
+
+func (e *encodeState) marshal(v interface{}) error {
 	val := reflect.ValueOf(v)
 
 	if !val.IsValid() {
-		return buf, &MarshalError{s: "invalid zero value for 'v'"}
+		return &MarshalError{s: "invalid zero value for 'v'"}
 	}
 
 	switch val.Kind() {
 	case reflect.Ptr:
-		return Marshal(val.Elem().Interface())
+		return e.marshal(val.Elem().Interface())
 	case reflect.Struct:
 		for i := 0; i < val.NumField(); i++ {
 			if val.Field(i).CanInterface() { // only consider exported field symbols
-				b, err := Marshal(val.Field(i).Interface())
+				err := e.marshal(val.Field(i).Interface())
 				if err != nil {
-					return buf, err
+					return err
 				}
-				buf = append(buf, b...)
 			}
 		}
 	case reflect.Array:
-		b := make([]byte, val.Len())
 		for i := 0; i < val.Len(); i++ {
-			b[i] = val.Index(i).Interface().(byte)
+			b, ok := val.Index(i).Interface().(byte)
+			if !ok {
+				return &MarshalError{s: "error for type " + val.Type().String() + ": type assertion to byte failed"}
+			}
+			err := e.WriteByte(b)
+			if err != nil {
+				return err
+			}
 		}
-		return b, nil
+		return nil
 	case reflect.Slice:
 		a, ok := v.([]byte)
 		if !ok {
-			return buf, &MarshalError{s: "error for type " + val.Type().String() + ": type assertion to []byte failed"}
+			return &MarshalError{s: "error for type " + val.Type().String() + ": type assertion to []byte failed"}
 		}
 		l := uint32(len(a))
-		b := new(bytes.Buffer)
-		err := binary.Write(b, binary.BigEndian, &l)
+		err := binary.Write(e, binary.BigEndian, &l)
 		if err != nil {
-			return buf, err
+			return err
 		}
-		b.Write(a)
-		return b.Bytes(), nil
+		_, err = e.Write(a)
+		return err
 	case reflect.String:
-		b := new(bytes.Buffer)
 		s := val.String()
 		l := uint32(len(s))
+		err := binary.Write(e, binary.BigEndian, &l)
+		if err != nil {
+			return err
+		}
+		_, err = e.WriteString(s)
+		if err != nil {
+			return err
+		}
 		pad := 4 - (len(s) % 4)
-		err := binary.Write(b, binary.BigEndian, &l)
-		if err != nil {
-			return buf, err
-		}
-		_, err = b.WriteString(s)
-		if err != nil {
-			return buf, err
-		}
 		for i := 0; i < pad; i++ {
-			err = b.WriteByte(0)
+			err = e.WriteByte(0)
 			if err != nil {
-				return buf, err
+				return err
 			}
 		}
-		return b.Bytes(), nil
+		return nil
 	case reflect.Uint64:
-		b := new(bytes.Buffer)
-		err := binary.Write(b, binary.BigEndian, val.Uint())
-		return b.Bytes(), err
+		err := binary.Write(e, binary.BigEndian, val.Uint())
+		return err
 	case reflect.Uint32:
-		b := new(bytes.Buffer)
-		err := binary.Write(b, binary.BigEndian, uint32(val.Uint()))
-		return b.Bytes(), err
+		err := binary.Write(e, binary.BigEndian, uint32(val.Uint()))
+		return err
 	default:
-		return buf, &MarshalError{s: "unsupported type: " + val.Type().String()}
+		return &MarshalError{s: "unsupported type: " + val.Type().String()}
 	}
-	return buf, nil
+	return nil
+}
+
+func newEncodeState() *encodeState {
+	return new(encodeState)
 }
