@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"reflect"
+	"strconv"
+	"strings"
 )
 
 // MarshalError is returned by Marshal when an unexpected error
@@ -18,7 +20,9 @@ func (e *MarshalError) Error() string {
 }
 
 type encodeState struct {
-	bytes.Buffer // accumulated output
+	bytes.Buffer          // accumulated output
+	switchValue  []uint32 // the value of the `xdr:"switch"` struct field
+	currentCase  []uint32 // the value of the current `xdr:"case=<n>"`
 }
 
 // Marshal serializes a value in XDR format to a byte sequence representation
@@ -47,9 +51,32 @@ func (e *encodeState) marshal(v interface{}) error {
 	case reflect.Struct:
 		for i := 0; i < val.NumField(); i++ {
 			if val.Field(i).CanInterface() { // only consider exported field symbols
-				err := e.marshal(val.Field(i).Interface())
-				if err != nil {
-					return err
+				f := reflect.TypeOf(v).Field(i) // to get the struct tag, need to go via reflect.TypeOf(v).Field(i) and not via reflect.ValueOf(v).Field(i)
+				x := f.Tag.Get("xdr")
+				s := strings.Split(x, "=")
+
+				switch s[0] {
+				case "switch":
+					u, ok := val.Field(i).Interface().(uint32)
+					if !ok {
+						return &MarshalError{s: "invalid type for struct field '" + f.Name + "': require uint32 for `xdr:\"switch\"`"}
+					}
+					e.switchValue = append(e.switchValue, u)
+				case "case":
+					u, err := strconv.ParseUint(s[1], 10, 32)
+					if err != nil {
+						return &MarshalError{s: fmt.Sprintf("invalid value '%s' in `xdr:\"case=%s\"` for struct field '%s': require uint32 value", s[1], s[1], f.Name)}
+					}
+					e.currentCase = append(e.currentCase, uint32(u))
+				}
+
+				if len(e.switchValue) == 0 || // no switch value
+					s[0] == "switch" || // the value of the switch itself needs to be marshaled, too
+					len(e.switchValue) > 0 && len(e.switchValue) == len(e.currentCase) && e.switchValue[len(e.switchValue)-1] == e.currentCase[len(e.currentCase)-1] { // switch value matches case value
+					err := e.marshal(val.Field(i).Interface())
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}
