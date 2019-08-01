@@ -7,8 +7,6 @@ import (
 	"reflect"
 )
 
-}
-
 // MarshalError is returned by Marshal when an unexpected error
 // occurred during the marshalling process
 type MarshalError struct {
