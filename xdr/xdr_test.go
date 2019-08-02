@@ -129,16 +129,6 @@ func TestEncodeDynamicallySizedValues(t *testing.T) {
 	}
 }
 
-type SizeLimit struct {
-	Data []byte `xdr:"maxsize=5"`
-}
-
-var sizeLimitInputBytes = []byte{1, 2, 3, 4, 5, 6}
-
-var sizeLimitExpect = &SizeLimit{
-	Data: []byte{1, 2, 3, 4, 5},
-}
-
 func TestDecodeSizeLimit(t *testing.T) {
 	t.Error("Unimplemented")
 }
