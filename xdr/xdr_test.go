@@ -258,26 +258,6 @@ func TestInvalidDefaultNoSwitch(t *testing.T) {
 	}
 }
 
-type InvalidSwitchNoCase struct {
-	First  uint32 `xdr:"switch"`
-	Second uint32
-	Third  uint32 `xdr:"case=0"`
-}
-
-var invalidSwitchNoCase = &InvalidSwitchNoCase{
-	First:  12,
-	Second: 44,
-	Third:  6,
-}
-
-// TestInvalidSwitchNoCase verifies that `xdr:"case=<n>"` follows directly a `xdr:"switch"` statement
-func TestInvalidSwitchNoCase(t *testing.T) {
-	got, err := xdr.Marshal(invalidSwitchNoCase)
-	if err == nil {
-		t.Fatalf("Expected error, but got %v", got)
-	}
-}
-
 type SwitchDefault struct {
 	First  uint32 `xdr:"switch"`
 	Second uint32 `xdr:"default"`
@@ -305,9 +285,10 @@ type SwitchSequence struct {
 	Second  uint32 `xdr:"case=12"`
 	Third   uint32 `xdr:"switch"`
 	Fourth  uint32 `xdr:"case=3"`
-	Fifth   uint32 `xdr:"case=5"`
-	Sixth   uint32
-	Seventh uint32 `xdr:"default"`
+	Fifth   uint32
+	Sixth   uint32 `xdr:"case=5"`
+	Seventh uint32
+	Eight   uint32 `xdr:"default"`
 }
 
 var switchSequence = &SwitchSequence{
@@ -318,9 +299,10 @@ var switchSequence = &SwitchSequence{
 	Fifth:   82,
 	Sixth:   122,
 	Seventh: 93,
+	Eight:   22,
 }
 
-var switchSequenceExpect = []byte{0, 0, 0, 12, 0, 0, 0, 44, 0, 0, 0, 5, 0, 0, 0, 82, 0, 0, 0, 122}
+var switchSequenceExpect = []byte{0, 0, 0, 12, 0, 0, 0, 44, 0, 0, 0, 5, 0, 0, 0, 122, 0, 0, 0, 93}
 
 // TestSwitchSequence verifies that two subsequent switch statements are executed correctly. Note that there is no
 // nesting support for switch statements: a new switch statement overwrites the previous one. And also, there is

@@ -79,10 +79,6 @@ func (e *encodeState) marshal(v interface{}) error {
 						return &MarshalError{s: fmt.Sprintf("invalid `xdr:\"default\"` for struct field '%s': no corresponding `xdr:\"switch\"` statement found", f.Name)}
 					}
 					e.defaultStatement()
-				default:
-					if e.isSwitch && !e.isCase {
-						return &MarshalError{s: fmt.Sprintf("missing case tag for struct field '%s': a `xdr:\"case=<n>\"` or `xdr:\"default\" statement must immediately follow an `xdr:\"switch\"`", f.Name)}
-					}
 				}
 
 				if s[0] == "switch" || e.caseMatch() {
