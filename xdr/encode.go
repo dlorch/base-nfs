@@ -112,6 +112,15 @@ func (e *encodeState) marshal(v interface{}) error {
 			return err
 		}
 		_, err = e.Write(a)
+		if l%4 > 0 {
+			pad := int(4 - (l % 4))
+			for i := 0; i < pad; i++ {
+				err = e.WriteByte(0)
+				if err != nil {
+					return err
+				}
+			}
+		}
 		return err
 	case reflect.String:
 		s := val.String()
@@ -124,11 +133,13 @@ func (e *encodeState) marshal(v interface{}) error {
 		if err != nil {
 			return err
 		}
-		pad := 4 - (len(s) % 4)
-		for i := 0; i < pad; i++ {
-			err = e.WriteByte(0)
-			if err != nil {
-				return err
+		if len(s)%4 > 0 {
+			pad := 4 - (len(s) % 4)
+			for i := 0; i < pad; i++ {
+				err = e.WriteByte(0)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		return nil

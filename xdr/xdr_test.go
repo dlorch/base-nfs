@@ -102,16 +102,18 @@ func TestEncodeFixedByteArray(t *testing.T) {
 }
 
 type DynamicallySizedValues struct {
-	Data []byte
-	Name string
+	Data    []byte
+	Name    string
+	Another string
 }
 
 var dynamicallySizedValues = &DynamicallySizedValues{
-	Data: []byte{41, 22, 13, 4, 15}, // encodes as: length + bytes
-	Name: "Gopher",                  // encodes as: length + bytes + padding (total length must be multiple of four)
+	Data:    []byte{41, 22, 13, 4, 15}, // encodes as: length + bytes + padding (total length must be multiple of four)
+	Name:    "Gopher",                  // encodes as: length + bytes + padding (total length must be multiple of four)
+	Another: "lisp",                    // encodes as: length + bytes + no padding (length is already multiple of four)
 }
 
-var dynamicallySizedValuesExpect = []byte{0, 0, 0, 5, 41, 22, 13, 4, 15, 0, 0, 0, 6, 71, 111, 112, 104, 101, 114, 0, 0}
+var dynamicallySizedValuesExpect = []byte{0, 0, 0, 5, 41, 22, 13, 4, 15, 0, 0, 0, 0, 0, 0, 6, 71, 111, 112, 104, 101, 114, 0, 0, 0, 0, 0, 4, 108, 105, 115, 112}
 
 func TestEncodeDynamicallySizedValues(t *testing.T) {
 	got, err := xdr.Marshal(dynamicallySizedValues)
