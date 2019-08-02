@@ -49,29 +49,34 @@ type VoidReply struct{}
 
 // FileAttr3 (struct fattr3)
 type FileAttr3 struct {
-	typ              uint32
-	mode             uint32
-	nlink            uint32
-	uid              uint32
-	gid              uint32
-	size             uint64
-	used             uint64
-	specdata1        uint32
-	specdata2        uint32
-	fsid             uint64
-	fileid           uint64
-	atimeseconds     uint32
-	atimenanoseconds uint32
-	mtimeseconds     uint32
-	mtimenanoseconds uint32
-	ctimeseconds     uint32
-	ctimenanoseconds uint32
+	Typ              uint32
+	Mode             uint32
+	Nlink            uint32
+	UID              uint32
+	GID              uint32
+	Size             uint64
+	Used             uint64
+	Specdata1        uint32
+	Specdata2        uint32
+	Fsid             uint64
+	Fileid           uint64
+	Atimeseconds     uint32
+	Atimenanoseconds uint32
+	Mtimeseconds     uint32
+	Mtimenanoseconds uint32
+	Ctimeseconds     uint32
+	Ctimenanoseconds uint32
+}
+
+// NFSFH3 (struct nfs_fh3)
+type NFSFH3 struct {
+	Data []byte
 }
 
 // PostOperationAttributes (union post_op_attr)
 type PostOperationAttributes struct {
-	AttributesFollow uint32 // bool
-	ObjectAttributes FileAttr3
+	AttributesFollow uint32    `xdr:"switch"` // TODO bool
+	ObjectAttributes FileAttr3 `xdr:"case=1"`
 }
 
 // GetAttr3Args (struct FSINFOargs)
@@ -251,23 +256,23 @@ func nfsProcedure3GetAttributes(procedureArguments []byte) (rpcv2.Serializable, 
 			status: NFS3OK,
 		},
 		ObjectAttributes: FileAttr3{
-			typ:              2,
-			mode:             040777,
-			nlink:            4,
-			uid:              0,
-			gid:              0,
-			size:             4096,
-			used:             8192,
-			specdata1:        0,
-			specdata2:        0,
-			fsid:             0x388e4346cfc706a8,
-			fileid:           16,
-			atimeseconds:     1563137262,
-			atimenanoseconds: 460002975,
-			mtimeseconds:     1537128120,
-			mtimenanoseconds: 839607220,
-			ctimeseconds:     1537128120,
-			ctimenanoseconds: 839607220,
+			Typ:              2,
+			Mode:             040777,
+			Nlink:            4,
+			UID:              0,
+			GID:              0,
+			Size:             4096,
+			Used:             8192,
+			Specdata1:        0,
+			Specdata2:        0,
+			Fsid:             0x388e4346cfc706a8,
+			Fileid:           16,
+			Atimeseconds:     1563137262,
+			Atimenanoseconds: 460002975,
+			Mtimeseconds:     1537128120,
+			Mtimenanoseconds: 839607220,
+			Ctimeseconds:     1537128120,
+			Ctimenanoseconds: 839607220,
 		},
 	}
 
@@ -290,23 +295,23 @@ func nfsProcedure3Access(procedureArguments []byte) (rpcv2.Serializable, error) 
 		PostOperationAttributes: PostOperationAttributes{
 			AttributesFollow: 1,
 			ObjectAttributes: FileAttr3{
-				typ:              2,
-				mode:             040777,
-				nlink:            4,
-				uid:              0,
-				gid:              0,
-				size:             4096,
-				used:             8192,
-				specdata1:        0,
-				specdata2:        0,
-				fsid:             0x388e4346cfc706a8,
-				fileid:           16,
-				atimeseconds:     1563137262,
-				atimenanoseconds: 460002975,
-				mtimeseconds:     1537128120,
-				mtimenanoseconds: 839607220,
-				ctimeseconds:     1537128120,
-				ctimenanoseconds: 839607220,
+				Typ:              2,
+				Mode:             040777,
+				Nlink:            4,
+				UID:              0,
+				GID:              0,
+				Size:             4096,
+				Used:             8192,
+				Specdata1:        0,
+				Specdata2:        0,
+				Fsid:             0x388e4346cfc706a8,
+				Fileid:           16,
+				Atimeseconds:     1563137262,
+				Atimenanoseconds: 460002975,
+				Mtimeseconds:     1537128120,
+				Mtimenanoseconds: 839607220,
+				Ctimeseconds:     1537128120,
+				Ctimenanoseconds: 839607220,
 			},
 		},
 		Access: 0x1f,
@@ -525,23 +530,23 @@ func nfsProcedure3ReadDirPlus(procedureArguments []byte) (rpcv2.Serializable, er
 		DirectoryAttributes: PostOperationAttributes{
 			AttributesFollow: 1,
 			ObjectAttributes: FileAttr3{
-				typ:              2,
-				mode:             040777,
-				nlink:            4,
-				uid:              0,
-				gid:              0,
-				size:             4096,
-				used:             8192,
-				specdata1:        0,
-				specdata2:        0,
-				fsid:             0x388e4346cfc706a8,
-				fileid:           16,
-				atimeseconds:     1563137262,
-				atimenanoseconds: 460002975,
-				mtimeseconds:     1537128120,
-				mtimenanoseconds: 839607220,
-				ctimeseconds:     1537128120,
-				ctimenanoseconds: 839607220,
+				Typ:              2,
+				Mode:             040777,
+				Nlink:            4,
+				UID:              0,
+				GID:              0,
+				Size:             4096,
+				Used:             8192,
+				Specdata1:        0,
+				Specdata2:        0,
+				Fsid:             0x388e4346cfc706a8,
+				Fileid:           16,
+				Atimeseconds:     1563137262,
+				Atimenanoseconds: 460002975,
+				Mtimeseconds:     1537128120,
+				Mtimenanoseconds: 839607220,
+				Ctimeseconds:     1537128120,
+				Ctimenanoseconds: 839607220,
 			},
 		},
 		CookieVerifier: [NFS3CookieVerifierSize]byte{},
@@ -554,23 +559,23 @@ func nfsProcedure3ReadDirPlus(procedureArguments []byte) (rpcv2.Serializable, er
 					NameAttributes: PostOperationAttributes{
 						AttributesFollow: 1,
 						ObjectAttributes: FileAttr3{
-							typ:              2,
-							mode:             040777,
-							nlink:            15,
-							uid:              0,
-							gid:              0,
-							size:             4096,
-							used:             4096,
-							specdata1:        0,
-							specdata2:        0,
-							fsid:             0x388e4346cfc706a8,
-							fileid:           2,
-							atimeseconds:     1562969613,
-							atimenanoseconds: 760001904,
-							mtimeseconds:     1562969597,
-							mtimenanoseconds: 560001387,
-							ctimeseconds:     1562969597,
-							ctimenanoseconds: 560001387,
+							Typ:              2,
+							Mode:             040777,
+							Nlink:            15,
+							UID:              0,
+							GID:              0,
+							Size:             4096,
+							Used:             4096,
+							Specdata1:        0,
+							Specdata2:        0,
+							Fsid:             0x388e4346cfc706a8,
+							Fileid:           2,
+							Atimeseconds:     1562969613,
+							Atimenanoseconds: 760001904,
+							Mtimeseconds:     1562969597,
+							Mtimenanoseconds: 560001387,
+							Ctimeseconds:     1562969597,
+							Ctimenanoseconds: 560001387,
 						},
 					},
 					NameHandle: PostOperationFileHandle3{
@@ -585,23 +590,23 @@ func nfsProcedure3ReadDirPlus(procedureArguments []byte) (rpcv2.Serializable, er
 					NameAttributes: PostOperationAttributes{
 						AttributesFollow: 1,
 						ObjectAttributes: FileAttr3{
-							typ:              2,
-							mode:             040755,
-							nlink:            15,
-							uid:              0,
-							gid:              0,
-							size:             4096,
-							used:             4096,
-							specdata1:        0,
-							specdata2:        0,
-							fsid:             0x388e4346cfc706a8,
-							fileid:           2,
-							atimeseconds:     1562969613,
-							atimenanoseconds: 760001904,
-							mtimeseconds:     1562969597,
-							mtimenanoseconds: 560001387,
-							ctimeseconds:     1562969597,
-							ctimenanoseconds: 560001387,
+							Typ:              2,
+							Mode:             040755,
+							Nlink:            15,
+							UID:              0,
+							GID:              0,
+							Size:             4096,
+							Used:             4096,
+							Specdata1:        0,
+							Specdata2:        0,
+							Fsid:             0x388e4346cfc706a8,
+							Fileid:           2,
+							Atimeseconds:     1562969613,
+							Atimenanoseconds: 760001904,
+							Mtimeseconds:     1562969597,
+							Mtimenanoseconds: 560001387,
+							Ctimeseconds:     1562969597,
+							Ctimenanoseconds: 560001387,
 						},
 					},
 					NameHandle: PostOperationFileHandle3{
@@ -616,23 +621,23 @@ func nfsProcedure3ReadDirPlus(procedureArguments []byte) (rpcv2.Serializable, er
 					NameAttributes: PostOperationAttributes{
 						AttributesFollow: 1,
 						ObjectAttributes: FileAttr3{
-							typ:              1,
-							mode:             0100666,
-							nlink:            1,
-							uid:              1027,
-							gid:              100,
-							size:             292,
-							used:             8192,
-							specdata1:        0,
-							specdata2:        0,
-							fsid:             0x388e4346cfc706a8,
-							fileid:           40243830,
-							atimeseconds:     1456162928,
-							atimenanoseconds: 85375909,
-							mtimeseconds:     1389825403,
-							mtimenanoseconds: 480233665,
-							ctimeseconds:     1419273932,
-							ctimenanoseconds: 807093921,
+							Typ:              1,
+							Mode:             0100666,
+							Nlink:            1,
+							UID:              1027,
+							GID:              100,
+							Size:             292,
+							Used:             8192,
+							Specdata1:        0,
+							Specdata2:        0,
+							Fsid:             0x388e4346cfc706a8,
+							Fileid:           40243830,
+							Atimeseconds:     1456162928,
+							Atimenanoseconds: 85375909,
+							Mtimeseconds:     1389825403,
+							Mtimenanoseconds: 480233665,
+							Ctimeseconds:     1419273932,
+							Ctimenanoseconds: 807093921,
 						},
 					},
 					NameHandle: PostOperationFileHandle3{
