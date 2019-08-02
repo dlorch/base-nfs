@@ -227,3 +227,110 @@ func TestEncodeUnion(t *testing.T) {
 		t.Fatalf("Expected %v but got %v", unionFailureExpect, got)
 	}
 }
+
+type InvalidCaseNoSwitch struct {
+	First uint `xdr:"case=0"`
+}
+
+var invalidCaseNoSwitch = &InvalidCaseNoSwitch{
+	First: 12,
+}
+
+func TestInvalidCaseNoSwitch(t *testing.T) {
+	got, err := xdr.Marshal(invalidCaseNoSwitch)
+	if err == nil {
+		t.Fatalf("Expected error, but got %v", got)
+	}
+}
+
+type InvalidDefaultNoSwitch struct {
+	First uint `xdr:"default"`
+}
+
+var invalidDefaultNoSwitch = &InvalidDefaultNoSwitch{
+	First: 12,
+}
+
+func TestInvalidDefaultNoSwitch(t *testing.T) {
+	got, err := xdr.Marshal(invalidDefaultNoSwitch)
+	if err == nil {
+		t.Fatalf("Expected error, but got %v", got)
+	}
+}
+
+type InvalidSwitchNoCase struct {
+	First  uint32 `xdr:"switch"`
+	Second uint32
+	Third  uint32 `xdr:"case=0"`
+}
+
+var invalidSwitchNoCase = &InvalidSwitchNoCase{
+	First:  12,
+	Second: 44,
+	Third:  6,
+}
+
+// TestInvalidSwitchNoCase verifies that `xdr:"case=<n>"` follows directly a `xdr:"switch"` statement
+func TestInvalidSwitchNoCase(t *testing.T) {
+	got, err := xdr.Marshal(invalidSwitchNoCase)
+	if err == nil {
+		t.Fatalf("Expected error, but got %v", got)
+	}
+}
+
+type SwitchDefault struct {
+	First  uint32 `xdr:"switch"`
+	Second uint32 `xdr:"default"`
+}
+
+var switchDefault = &SwitchDefault{
+	First:  12,
+	Second: 44,
+}
+
+var switchDefaultExpect = []byte{0, 0, 0, 12, 0, 0, 0, 44}
+
+func TestSwitchDefault(t *testing.T) {
+	got, err := xdr.Marshal(switchDefault)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, switchDefaultExpect) {
+		t.Fatalf("Expected %v but got %v", switchDefaultExpect, got)
+	}
+}
+
+type SwitchSequence struct {
+	First   uint32 `xdr:"switch"`
+	Second  uint32 `xdr:"case=12"`
+	Third   uint32 `xdr:"switch"`
+	Fourth  uint32 `xdr:"case=3"`
+	Fifth   uint32 `xdr:"case=5"`
+	Sixth   uint32
+	Seventh uint32 `xdr:"default"`
+}
+
+var switchSequence = &SwitchSequence{
+	First:   12,
+	Second:  44,
+	Third:   5,
+	Fourth:  52,
+	Fifth:   82,
+	Sixth:   122,
+	Seventh: 93,
+}
+
+var switchSequenceExpect = []byte{0, 0, 0, 12, 0, 0, 0, 44, 0, 0, 0, 5, 0, 0, 0, 82, 0, 0, 0, 122}
+
+// TestSwitchSequence verifies that two subsequent switch statements are executed correctly. Note that there is no
+// nesting support for switch statements: a new switch statement overwrites the previous one. And also, there is
+// no explicit "end switch" statement - the "default" statement can be used instead
+func TestSwitchSequence(t *testing.T) {
+	got, err := xdr.Marshal(switchSequence)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, switchSequenceExpect) {
+		t.Fatalf("Expected %v but got %v", switchSequenceExpect, got)
+	}
+}
