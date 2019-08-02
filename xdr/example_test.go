@@ -65,7 +65,7 @@ const (
 type Filetype struct {
 	Filekind uint32 `xdr:"switch"`
 	// note that "void" for "case TEXT" was omitted
-	Creator     string `xdr:"case=1"`
+	Creator     string `xdr:"case=1"` // note that size limit indicators need to be verified by the application
 	Interpretor string `xdr:"case=2"`
 }
 
