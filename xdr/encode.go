@@ -49,7 +49,7 @@ func (e *encodeState) marshal(v interface{}) error {
 	val := reflect.ValueOf(v)
 
 	if !val.IsValid() {
-		return &MarshalError{s: "invalid zero value for 'v'"}
+		return &MarshalError{s: "invalid zero value for marshalling"}
 	}
 
 	switch val.Kind() {
