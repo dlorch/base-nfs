@@ -288,7 +288,8 @@ type SwitchSequence struct {
 	Fifth   uint32
 	Sixth   uint32 `xdr:"case=5"`
 	Seventh uint32
-	Eight   uint32 `xdr:"default"`
+	Eight   uint32 `xdr:"case=12"`
+	Ninth   uint32 `xdr:"default"`
 }
 
 var switchSequence = &SwitchSequence{
@@ -300,6 +301,7 @@ var switchSequence = &SwitchSequence{
 	Sixth:   122,
 	Seventh: 93,
 	Eight:   22,
+	Ninth:   11,
 }
 
 var switchSequenceExpect = []byte{0, 0, 0, 12, 0, 0, 0, 44, 0, 0, 0, 5, 0, 0, 0, 122, 0, 0, 0, 93}

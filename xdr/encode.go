@@ -156,6 +156,8 @@ func (e *encodeState) caseStatement(u uint32) {
 		e.isCase = true
 		e.currentCase = uint32(u)
 		e.matched = true
+	} else {
+		e.isCase = false
 	}
 }
 
