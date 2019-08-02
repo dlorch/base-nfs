@@ -306,7 +306,7 @@ var switchSequenceExpect = []byte{0, 0, 0, 12, 0, 0, 0, 44, 0, 0, 0, 5, 0, 0, 0,
 
 // TestSwitchSequence verifies that two subsequent switch statements are executed correctly. Note that there is no
 // nesting support for switch statements: a new switch statement overwrites the previous one. And also, there is
-// no explicit "end switch" statement - the "default" statement can be used instead
+// no explicit "end switch" statement - a new switch statement followed by a default statement has to be used instead
 func TestSwitchSequence(t *testing.T) {
 	got, err := xdr.Marshal(switchSequence)
 	if err != nil {
