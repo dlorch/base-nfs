@@ -38,18 +38,6 @@ type GroupNode struct {
 type ExportNode struct {
 }
 
-// MountResult3 (RFC1813: struct mountres3)
-type MountResult3 struct {
-	Status         uint32
-	MountResult3OK MountResult3OK
-}
-
-// MountResult3OK (RFC1813: struct mountres3_ok)
-type MountResult3OK struct {
-	FileHandle3 []byte
-	AuthFlavors []uint32
-}
-
 // Constants for mount protocol (RFC1813)
 const (
 	Program                    uint32 = 100005 // Mount service program number
