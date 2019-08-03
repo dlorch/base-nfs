@@ -4,7 +4,6 @@ ADD ./ /go/src/github.com/dlorch/nfsv3/
 RUN CGO_ENABLED=0 go build -o nfsv3-server
 
 FROM alpine:latest
-RUN apk --no-cache add ca-certificates
 COPY --from=builder /go/src/github.com/dlorch/nfsv3/nfsv3-server /usr/local/bin/
 EXPOSE 111/udp
 EXPOSE 111/tcp
