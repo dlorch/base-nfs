@@ -111,25 +111,41 @@ func (e *encodeState) marshal(v interface{}, sts *structTagState) error {
 		return nil
 	case reflect.Slice:
 		a, ok := v.([]byte)
-		if !ok {
-			return &MarshalError{s: "error for type " + val.Type().String() + ": type assertion to []byte failed"}
-		}
-		l := uint32(len(a))
-		err := binary.Write(e, binary.BigEndian, &l)
-		if err != nil {
-			return err
-		}
-		_, err = e.Write(a)
-		if l%4 > 0 {
-			pad := int(4 - (l % 4))
-			for i := 0; i < pad; i++ {
-				err = e.WriteByte(0)
-				if err != nil {
-					return err
+		if ok {
+			l := uint32(val.Len())
+			err := binary.Write(e, binary.BigEndian, &l)
+			if err != nil {
+				return err
+			}
+			_, err = e.Write(a)
+			if err != nil {
+				return err
+			}
+			if l%4 > 0 {
+				pad := int(4 - (l % 4))
+				for i := 0; i < pad; i++ {
+					err = e.WriteByte(0)
+					if err != nil {
+						return err
+					}
 				}
 			}
+			return nil
 		}
-		return err
+		u, ok := v.([]uint32)
+		if ok {
+			l := uint32(val.Len())
+			err := binary.Write(e, binary.BigEndian, &l)
+			if err != nil {
+				return err
+			}
+			err = binary.Write(e, binary.BigEndian, &u)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+		return &MarshalError{s: "error for type " + val.Type().String() + ": type assertion to []byte / []uint32 failed"}
 	case reflect.String:
 		s := val.String()
 		l := uint32(len(s))
