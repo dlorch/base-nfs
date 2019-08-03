@@ -131,10 +131,6 @@ func TestEncodeDynamicallySizedValues(t *testing.T) {
 	}
 }
 
-func TestDecodeSizeLimit(t *testing.T) {
-	t.Error("Unimplemented")
-}
-
 type OptionalAttribute struct {
 	AttributeFollows uint32 `xdr:"switch"`
 	Attribute        Simple `xdr:"case=1"`
