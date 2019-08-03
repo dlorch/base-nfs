@@ -179,37 +179,6 @@ func (e *encodeState) marshal(v interface{}, sts *structTagState) error {
 	return nil
 }
 
-func newStructTagState() *structTagState {
-	return new(structTagState)
-}
-
-func (sts *structTagState) switchStatement(u uint32) {
-	sts.isSwitch = true
-	sts.switchValue = u
-	sts.isCase = false
-	sts.matched = false
-}
-
-func (sts *structTagState) caseStatement(u uint32) {
-	if sts.switchValue == uint32(u) {
-		sts.isCase = true
-		sts.currentCase = uint32(u)
-		sts.matched = true
-	} else {
-		sts.isCase = false
-	}
-}
-
-func (sts *structTagState) defaultStatement() {
-	// if a previous case matched, the default statement will not be executed
-	// if no previous case matched, the default statement will be executed
-	sts.isCase = !sts.matched
-}
-
-func (s *structTagState) caseMatch() bool {
-	return !s.isSwitch || (s.isSwitch && s.isCase)
-}
-
 func newEncodeState() *encodeState {
 	return new(encodeState)
 }
