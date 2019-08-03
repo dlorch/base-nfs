@@ -3,8 +3,6 @@ package portmapv2
 import (
 	"bytes"
 	"encoding/binary"
-
-	"github.com/dlorch/nfsv3/rpcv2"
 )
 
 // GetPortResult represents the requested port number
@@ -20,12 +18,7 @@ type Mapping struct {
 	Port     uint32
 }
 
-// ToBytes serializes the uint32 reply to be sent back to the client
-func (reply *GetPortResult) ToBytes() ([]byte, error) {
-	return rpcv2.SerializeFixedSizeStruct(reply)
-}
-
-func procedureGetPort(procedureArguments []byte) (rpcv2.Serializable, error) {
+func procedureGetPort(procedureArguments []byte) (interface{}, error) {
 	var requestBody = bytes.NewBuffer(procedureArguments)
 	var mapping Mapping
 

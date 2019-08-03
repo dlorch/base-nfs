@@ -1,7 +1,5 @@
 package nfsv3
 
-import "github.com/dlorch/nfsv3/rpcv2"
-
 // GetAttr3Args (struct FSINFOargs)
 type GetAttr3Args struct {
 	FileHandle []byte
@@ -15,22 +13,17 @@ type GetAttr3ResultOK struct {
 
 // GetAttr3Result (union GETATTR3res)
 type GetAttr3Result struct {
-	status uint32
+	Status uint32
 }
 
-// ToBytes serializes the GetAttr3ResultOK to be sent back to the client
-func (reply *GetAttr3ResultOK) ToBytes() ([]byte, error) {
-	return rpcv2.SerializeFixedSizeStruct(reply)
-}
-
-func nfsProcedure3GetAttributes(procedureArguments []byte) (rpcv2.Serializable, error) {
+func nfsProcedure3GetAttributes(procedureArguments []byte) (interface{}, error) {
 	// parse request
 	// TODO
 
 	// prepare result
 	getAttrResult := &GetAttr3ResultOK{
 		GetAttr3Result: GetAttr3Result{
-			status: NFS3OK,
+			Status: NFS3OK,
 		},
 		ObjectAttributes: FileAttr3{
 			Typ:              2,

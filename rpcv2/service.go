@@ -43,7 +43,7 @@ type udpClient struct {
 	clientAddress    *net.UDPAddr
 }
 
-type rpcProcedureHandler func([]byte) (Serializable, error)
+type rpcProcedureHandler func([]byte) (interface{}, error)
 
 // RPCService represents an RPC service
 type RPCService struct {

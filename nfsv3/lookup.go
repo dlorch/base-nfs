@@ -3,11 +3,6 @@
 
 package nfsv3
 
-import (
-	"github.com/dlorch/nfsv3/rpcv2"
-	"github.com/dlorch/nfsv3/xdr"
-)
-
 // Lookup3Args ...
 type Lookup3Args struct {
 	// what diropargs3
@@ -32,14 +27,9 @@ type Lookup3Res struct {
 	ResFail Lookup3ResFail `xdr:"default"`
 }
 
-// ToBytes serializes the PathConf3ResultOK to be sent back to the client
-func (res *Lookup3Res) ToBytes() ([]byte, error) {
-	return xdr.Marshal(res)
-}
-
 // Lookup3 (NFSPROC3_LOOKUP) searches a directory for a specific name
 // and returns the file handle for the corresponding file system object.
-func Lookup3(arg []byte) (rpcv2.Serializable, error) {
+func Lookup3(arg []byte) (interface{}, error) {
 	res := &Lookup3Res{
 		Status: NFS3OK,
 		ResOK: Lookup3ResOK{

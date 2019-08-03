@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-
-	"github.com/dlorch/nfsv3/rpcv2"
 )
 
 // FSInfo3Args (struct FSINFOargs)
@@ -16,18 +14,18 @@ type FSInfo3Args struct {
 // FSInfo3ResultOK (struct FSINFO3resok)
 type FSInfo3ResultOK struct {
 	FSInfo3Result
-	objattributes        uint32 // TODO
-	rtmax                uint32
-	rtpref               uint32
-	rtmult               uint32
-	wtmax                uint32
-	wtpref               uint32
-	wtmult               uint32
-	dtpref               uint32
-	maxfilesize          uint64
-	timedeltaseconds     uint32
-	timedeltananoseconds uint32
-	properties           uint32
+	Objattributes        uint32 // TODO
+	Rtmax                uint32
+	Rtpref               uint32
+	Rtmult               uint32
+	Wtmax                uint32
+	Wtpref               uint32
+	Wtmult               uint32
+	Dtpref               uint32
+	Maxfilesize          uint64
+	Timedeltaseconds     uint32
+	Timedeltananoseconds uint32
+	Properties           uint32
 }
 
 // FSInfo3ResultFail (struct FSINFO3resfail)
@@ -38,15 +36,10 @@ type FSInfo3ResultFail struct {
 
 // FSInfo3Result (union FSINFO3res)
 type FSInfo3Result struct {
-	status uint32
+	Status uint32
 }
 
-// ToBytes serializes the FSInfo3ResultOK to be sent back to the client
-func (reply *FSInfo3ResultOK) ToBytes() ([]byte, error) {
-	return rpcv2.SerializeFixedSizeStruct(reply)
-}
-
-func nfsProcedure3FSInfo(procedureArguments []byte) (rpcv2.Serializable, error) {
+func nfsProcedure3FSInfo(procedureArguments []byte) (interface{}, error) {
 	// parse request
 	requestBuffer := bytes.NewBuffer(procedureArguments)
 
@@ -73,20 +66,20 @@ func nfsProcedure3FSInfo(procedureArguments []byte) (rpcv2.Serializable, error) 
 	// prepare result
 	fsInfoResult := &FSInfo3ResultOK{
 		FSInfo3Result: FSInfo3Result{
-			status: NFS3OK,
+			Status: NFS3OK,
 		},
-		objattributes:        0,
-		rtmax:                131072,
-		rtpref:               131072,
-		rtmult:               4096,
-		wtmax:                131072,
-		wtpref:               131072,
-		wtmult:               4096,
-		dtpref:               4096,
-		maxfilesize:          8796093022207,
-		timedeltaseconds:     1,
-		timedeltananoseconds: 0,
-		properties:           0x0000001b,
+		Objattributes:        0,
+		Rtmax:                131072,
+		Rtpref:               131072,
+		Rtmult:               4096,
+		Wtmax:                131072,
+		Wtpref:               131072,
+		Wtmult:               4096,
+		Dtpref:               4096,
+		Maxfilesize:          8796093022207,
+		Timedeltaseconds:     1,
+		Timedeltananoseconds: 0,
+		Properties:           0x0000001b,
 	}
 
 	return fsInfoResult, nil

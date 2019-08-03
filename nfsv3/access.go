@@ -1,7 +1,5 @@
 package nfsv3
 
-import "github.com/dlorch/nfsv3/rpcv2"
-
 // Access3ResultOK (union ACCESS3resok)
 type Access3ResultOK struct {
 	Access3Result
@@ -11,19 +9,14 @@ type Access3ResultOK struct {
 
 // Access3Result (union ACCESS3res)
 type Access3Result struct {
-	status uint32
+	Status uint32
 }
 
-// ToBytes serializes the FSInfo3ResultOK to be sent back to the client
-func (reply *Access3ResultOK) ToBytes() ([]byte, error) {
-	return rpcv2.SerializeFixedSizeStruct(reply)
-}
-
-func nfsProcedure3Access(procedureArguments []byte) (rpcv2.Serializable, error) {
+func nfsProcedure3Access(procedureArguments []byte) (interface{}, error) {
 	// prepare result
 	fsInfoResult := &Access3ResultOK{
 		Access3Result: Access3Result{
-			status: NFS3OK,
+			Status: NFS3OK,
 		},
 		PostOperationAttributes: PostOperationAttributes{
 			AttributesFollow: 1,

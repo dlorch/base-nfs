@@ -4,11 +4,6 @@
 
 package mountv3
 
-import (
-	"github.com/dlorch/nfsv3/rpcv2"
-	"github.com/dlorch/nfsv3/xdr"
-)
-
 // MountProcedure3Export  is the number for this RPC procedure (MOUNTPROC3_EXPORT)
 const MountProcedure3Export uint32 = 5
 
@@ -27,11 +22,10 @@ type Exports struct {
 	ExNext       *Exports
 }
 
-// ExportNode ...
-type ExportNode struct{}
-
-// ToBytes serializes the ExportNode to be sent back to the client
-func (reply *ExportNode) ToBytes() ([]byte, error) {
+// Export returns a list of all the exported file systems and which
+// clients are allowed to mount each one.
+// https://tools.ietf.org/html/rfc1813#page-113
+func Export(procedureArguments []byte) (interface{}, error) {
 	exports := &Exports{
 		ValueFollows: 1,
 		ExDir:        "/volume1/Public",
@@ -47,12 +41,5 @@ func (reply *ExportNode) ToBytes() ([]byte, error) {
 		},
 	}
 
-	return xdr.Marshal(exports)
-}
-
-// Export returns a list of all the exported file systems and which
-// clients are allowed to mount each one.
-// https://tools.ietf.org/html/rfc1813#page-113
-func Export(procedureArguments []byte) (rpcv2.Serializable, error) {
-	return &ExportNode{}, nil
+	return exports, nil
 }

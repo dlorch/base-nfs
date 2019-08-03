@@ -74,21 +74,6 @@ type PostOperationFileHandle3 struct {
 	Handle        []byte // TODO struct nfs_fh3
 }
 
-// EntryPlus3 (struct entryplus3)
-type EntryPlus3 struct {
-	FileID         uint64
-	FileName3      string
-	Cookie         Cookie3
-	NameAttributes PostOperationAttributes
-	NameHandle     PostOperationFileHandle3
-}
-
-// DirListPlus3 (struct dirlistplus3)
-type DirListPlus3 struct {
-	Entries []EntryPlus3
-	EOF     uint32 // bool
-}
-
 // Constants for mount protocol (RFC1813)
 const (
 	Program                    uint32 = 100003 // Mount service program number

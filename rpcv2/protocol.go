@@ -40,11 +40,6 @@ import (
 	"github.com/dlorch/nfsv3/xdr"
 )
 
-// Serializable ...
-type Serializable interface {
-	ToBytes() ([]byte, error)
-}
-
 // RPCMessage describes the request/response RPC header (RFC1057: struct rpc_msg)
 type RPCMessage struct {
 	XID         uint32
@@ -219,9 +214,7 @@ func handleClient(requestBytes []byte, rpcProcedures map[uint32]rpcProcedureHand
 		return xdr.Marshal(procUnavail)
 	}
 
-	var procedureResponse Serializable
-
-	procedureResponse, err = rpcProcedure(requestBytes[argumentsIndex:])
+	procedureResponse, err := rpcProcedure(requestBytes[argumentsIndex:])
 
 	if err != nil {
 		fmt.Println("Error: ", err.Error())
@@ -255,42 +248,12 @@ func handleClient(requestBytes []byte, rpcProcedures map[uint32]rpcProcedureHand
 					Body:   []byte{},
 				},
 				AcceptState: Success,
-				Results:     Void{},
+				Results:     procedureResponse,
 			},
 		},
 	}
 
-	var response []byte
-	responseBuffer := new(bytes.Buffer)
-
-	response, err = xdr.Marshal(acceptedReply)
-
-	if err != nil {
-		return responseBytes, err
-	}
-
-	_, err = responseBuffer.Write(response)
-
-	if err != nil {
-		return responseBytes, err
-	}
-
-	response, err = procedureResponse.ToBytes()
-
-	if err != nil {
-		return responseBytes, err
-	}
-
-	_, err = responseBuffer.Write(response)
-
-	if err != nil {
-		return responseBytes, err
-	}
-
-	response = make([]byte, responseBuffer.Len())
-	copy(response, responseBuffer.Bytes())
-
-	return response, nil
+	return xdr.Marshal(acceptedReply)
 }
 
 func readNextRequestFragment(clientConnection net.Conn) (requestBytes []byte, isLastFragment bool, err error) {
@@ -463,21 +426,4 @@ func parseRPCCallBody(requestBytes []byte) (rpcCallBody RPCMessage, bytesRead in
 	}
 
 	return rpcCallBody, len(requestBytes) - requestBuffer.Len(), nil
-}
-
-// SerializeFixedSizeStruct serializes any struct with only fixed-size elements (limitation of binary.Write), i.e. no strings and no dynamically sized byte arrays
-func SerializeFixedSizeStruct(reply interface{}) ([]byte, error) {
-	var responseBuffer = new(bytes.Buffer)
-	var responseBytes = []byte{}
-
-	err := binary.Write(responseBuffer, binary.BigEndian, reply)
-
-	if err != nil {
-		return responseBytes, err
-	}
-
-	responseBytes = make([]byte, responseBuffer.Len())
-	copy(responseBytes, responseBuffer.Bytes())
-
-	return responseBytes, nil
 }

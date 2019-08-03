@@ -9,7 +9,6 @@ import (
 	"encoding/binary"
 
 	"github.com/dlorch/nfsv3/rpcv2"
-	"github.com/dlorch/nfsv3/xdr"
 )
 
 // MountProcedure3Mnt is the number for this RPC procedure (MOUNTPROC3_MNT)
@@ -27,25 +26,9 @@ type MountRes3 struct {
 	MountInfo MountRes3OK `xdr:"case=0"`
 }
 
-// MountResult3 (RFC1813: struct mountres3)
-type MountResult3 struct{}
-
-// ToBytes serializes the MountResult3 to be sent back to the client
-func (reply *MountResult3) ToBytes() ([]byte, error) {
-	mountOk := &MountRes3{
-		FhsStatus: Mount3OK,
-		MountInfo: MountRes3OK{
-			FHandle:     []byte{0, 0, 0, 42},
-			AuthFlavors: []uint32{rpcv2.AuthenticationUNIX},
-		},
-	}
-
-	return xdr.Marshal(mountOk)
-}
-
 // Mnt maps a pathname on the server to a file handle.
 // https://tools.ietf.org/html/rfc1813#page-109
-func Mnt(procedureArguments []byte) (rpcv2.Serializable, error) {
+func Mnt(procedureArguments []byte) (interface{}, error) {
 	// parse request
 	requestBuffer := bytes.NewBuffer(procedureArguments)
 
@@ -65,5 +48,13 @@ func Mnt(procedureArguments []byte) (rpcv2.Serializable, error) {
 		return nil, err
 	}
 
-	return &MountResult3{}, nil
+	mountOk := &MountRes3{
+		FhsStatus: Mount3OK,
+		MountInfo: MountRes3OK{
+			FHandle:     []byte{0, 0, 0, 42},
+			AuthFlavors: []uint32{rpcv2.AuthenticationUNIX},
+		},
+	}
+
+	return mountOk, nil
 }
