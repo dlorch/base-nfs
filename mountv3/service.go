@@ -46,7 +46,7 @@ func NewMountService() *MountService {
 	}
 
 	mountService.RegisterProcedure(MountProcedure3Null, mountProcedure3Null)
-	mountService.RegisterProcedure(MountProcedure3Export, mountProcedure3export)
+	mountService.RegisterProcedure(MountProcedure3Export, Export)
 	mountService.RegisterProcedure(MountProcedure3Mount, mountProcedure3mount)
 
 	return mountService

@@ -1,52 +1,62 @@
+// Copyright 2019 Daniel Lorch. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package mountv3
 
 import (
-	"bytes"
-	"encoding/binary"
-
 	"github.com/dlorch/nfsv3/rpcv2"
+	"github.com/dlorch/nfsv3/xdr"
 )
+
+// Constants for mount protocol
+const (
+	MountProcedure3Export uint32 = 5 // MOUNTPROC3_EXPORT
+)
+
+// Groups describes a linked-list of groups (struct groupnode)
+type Groups struct {
+	ValueFollows uint32 `xdr:"switch"`
+	GrName       string `xdr:"case=1"`
+	GrNext       interface{}
+}
+
+// Exports describes a linked-list of exports (struct exportnode)
+type Exports struct {
+	ValueFollows uint32 `xdr:"switch"`
+	ExDir        string `xdr:"case=1"`
+	ExGroups     Groups
+	ExNext       interface{}
+}
+
+// TODO marshaller doesn't send last 0 from ExNext, because of case=0 in Group. idea: put switch flags in function marshal() as args
+
+// ExportNode ...
+type ExportNode struct{}
 
 // ToBytes serializes the ExportNode to be sent back to the client
 func (reply *ExportNode) ToBytes() ([]byte, error) {
-	var responseBuffer = new(bytes.Buffer)
+	exports := &Exports{
+		ValueFollows: 1,
+		ExDir:        "/volume1/Public",
+		ExGroups: Groups{
+			ValueFollows: 1,
+			GrName:       "*",
+			GrNext: Groups{
+				ValueFollows: 0,
+			},
+		},
+		ExNext: Exports{
+			ValueFollows: 0,
+		},
+	}
 
-	// --- mount service body
-
-	var valueFollowsYes uint32
-	valueFollowsYes = 1
-
-	var valueFollowsNo uint32
-	valueFollowsNo = 0
-
-	directoryContents := "/volume1/Public"
-	directoryLength := uint32(len(directoryContents))
-
-	groupContents := "*"
-	groupLength := uint32(len(groupContents))
-
-	fillBytes := uint8(0)
-
-	err := binary.Write(responseBuffer, binary.BigEndian, &valueFollowsYes)
-	err = binary.Write(responseBuffer, binary.BigEndian, &directoryLength)
-	_, err = responseBuffer.Write([]byte(directoryContents))
-	err = binary.Write(responseBuffer, binary.BigEndian, &fillBytes)
-
-	err = binary.Write(responseBuffer, binary.BigEndian, &valueFollowsYes)
-	err = binary.Write(responseBuffer, binary.BigEndian, &groupLength)
-	_, err = responseBuffer.Write([]byte(groupContents))
-	err = binary.Write(responseBuffer, binary.BigEndian, &fillBytes)
-	err = binary.Write(responseBuffer, binary.BigEndian, &fillBytes)
-	err = binary.Write(responseBuffer, binary.BigEndian, &fillBytes)
-	err = binary.Write(responseBuffer, binary.BigEndian, &valueFollowsNo)
-
-	err = binary.Write(responseBuffer, binary.BigEndian, &valueFollowsNo)
-
-	responseBytes := make([]byte, responseBuffer.Len())
-	copy(responseBytes, responseBuffer.Bytes())
-	return responseBytes, err
+	return xdr.Marshal(exports)
 }
 
-func mountProcedure3export(procedureArguments []byte) (rpcv2.Serializable, error) {
+// Export returns a list of all the exported file systems and which
+// clients are allowed to mount each one.
+// https://tools.ietf.org/html/rfc1813#page-113
+func Export(procedureArguments []byte) (rpcv2.Serializable, error) {
 	return &ExportNode{}, nil
 }
