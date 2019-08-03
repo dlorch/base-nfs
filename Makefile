@@ -6,7 +6,7 @@ integration-setup: ## build docker images for integration tests [requires Docker
 	@docker-compose -f tests/docker-compose.yaml build
 
 integration: ## run all integration tests [requires Docker Compose]
-	@docker-compose -f tests/docker-compose.yaml run tester /usr/bin/bats -p /tests
+	@docker-compose -f tests/docker-compose.yaml run tester /usr/bin/bats /tests
 	@docker-compose -f tests/docker-compose.yaml down 2> /dev/null
 
 unittests: ## run all unit tests
