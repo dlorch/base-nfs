@@ -1,0 +1,12 @@
+version: "3.7"
+
+services:
+    nfs-server:
+        build: ../
+    tester:
+        build: ./
+        volumes:
+           - .:/tests
+        depends_on:
+           - "nfs-server"
+        privileged: true # for `mount'
