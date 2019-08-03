@@ -5,9 +5,11 @@
 integration-setup: ## build docker images for integration tests [requires Docker Compose]
 	@docker-compose -f tests/docker-compose.yaml build
 
+integration-teardown: ## destroy resources associated to integration tests [requires Docker Compose]
+	@docker-compose -f tests/docker-compose.yaml down
+
 integration: ## run all integration tests [requires Docker Compose]
 	@docker-compose -f tests/docker-compose.yaml run tester /usr/bin/bats -p /tests
-	@docker-compose -f tests/docker-compose.yaml down
 
 unittests: ## run all unit tests
 	@go test ./...
