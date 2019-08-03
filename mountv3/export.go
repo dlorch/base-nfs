@@ -9,10 +9,8 @@ import (
 	"github.com/dlorch/nfsv3/xdr"
 )
 
-// Constants for mount protocol
-const (
-	MountProcedure3Export uint32 = 5 // MOUNTPROC3_EXPORT
-)
+// MountProcedure3Export  is the number for this RPC procedure (MOUNTPROC3_EXPORT)
+const MountProcedure3Export uint32 = 5
 
 // Groups describes a linked-list of groups (struct groupnode)
 type Groups struct {
