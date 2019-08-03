@@ -16,7 +16,7 @@ const MountProcedure3Export uint32 = 5
 type Groups struct {
 	ValueFollows uint32 `xdr:"switch"`
 	GrName       string `xdr:"case=1"`
-	GrNext       interface{}
+	GrNext       *Groups
 }
 
 // Exports describes a linked-list of exports (struct exportnode)
@@ -24,7 +24,7 @@ type Exports struct {
 	ValueFollows uint32 `xdr:"switch"`
 	ExDir        string `xdr:"case=1"`
 	ExGroups     Groups
-	ExNext       interface{}
+	ExNext       *Exports
 }
 
 // ExportNode ...
@@ -38,11 +38,11 @@ func (reply *ExportNode) ToBytes() ([]byte, error) {
 		ExGroups: Groups{
 			ValueFollows: 1,
 			GrName:       "*",
-			GrNext: Groups{
+			GrNext: &Groups{
 				ValueFollows: 0,
 			},
 		},
-		ExNext: Exports{
+		ExNext: &Exports{
 			ValueFollows: 0,
 		},
 	}
