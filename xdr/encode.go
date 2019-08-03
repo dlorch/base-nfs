@@ -24,19 +24,23 @@ func (e *MarshalError) Error() string {
 }
 
 type encodeState struct {
-	bytes.Buffer        // accumulated output
-	isSwitch     bool   // are we inside a switch statement?
-	switchValue  uint32 // the value of the `xdr:"switch"` struct field
-	isCase       bool   // are we inside a case statement?
-	currentCase  uint32 // the value of the current `xdr:"case=<n>"`
-	matched      bool   // did any of the case statements match so far?
+	bytes.Buffer // accumulated output
+}
+
+type structTagState struct {
+	isSwitch    bool   // are we inside a switch statement?
+	switchValue uint32 // the value of the `xdr:"switch"` struct field
+	isCase      bool   // are we inside a case statement?
+	currentCase uint32 // the value of the current `xdr:"case=<n>"`
+	matched     bool   // did any of the case statements match so far?
 }
 
 // Marshal serializes a value in XDR format to a byte sequence representation
 func Marshal(v interface{}) ([]byte, error) {
 	e := newEncodeState()
+	s := newStructTagState()
 
-	err := e.marshal(v)
+	err := e.marshal(v, s)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +49,7 @@ func Marshal(v interface{}) ([]byte, error) {
 	return buf, nil
 }
 
-func (e *encodeState) marshal(v interface{}) error {
+func (e *encodeState) marshal(v interface{}, sts *structTagState) error {
 	val := reflect.ValueOf(v)
 
 	if !val.IsValid() {
@@ -54,7 +58,7 @@ func (e *encodeState) marshal(v interface{}) error {
 
 	switch val.Kind() {
 	case reflect.Ptr:
-		return e.marshal(val.Elem().Interface())
+		return e.marshal(val.Elem().Interface(), sts)
 	case reflect.Struct:
 		for i := 0; i < val.NumField(); i++ {
 			if val.Field(i).CanInterface() { // only consider exported field symbols
@@ -68,25 +72,25 @@ func (e *encodeState) marshal(v interface{}) error {
 					if !ok {
 						return &MarshalError{s: fmt.Sprintf("invalid type for struct field '%s': require uint32 for `xdr:\"switch\"`", f.Name)}
 					}
-					e.switchStatement(u)
+					sts.switchStatement(u)
 				case "case":
-					if !e.isSwitch {
+					if !sts.isSwitch {
 						return &MarshalError{s: fmt.Sprintf("invalid `xdr:\"case=%s\" for struct field '%s': no corresponding `xdr:\"switch\"` statement found", s[1], f.Name)}
 					}
 					u, err := strconv.ParseUint(s[1], 10, 32)
 					if err != nil {
 						return &MarshalError{s: fmt.Sprintf("invalid value '%s' in `xdr:\"case=%s\"` for struct field '%s': require uint32 value", s[1], s[1], f.Name)}
 					}
-					e.caseStatement(uint32(u))
+					sts.caseStatement(uint32(u))
 				case "default":
-					if !e.isSwitch {
+					if !sts.isSwitch {
 						return &MarshalError{s: fmt.Sprintf("invalid `xdr:\"default\"` for struct field '%s': no corresponding `xdr:\"switch\"` statement found", f.Name)}
 					}
-					e.defaultStatement()
+					sts.defaultStatement()
 				}
 
-				if s[0] == "switch" || e.caseMatch() {
-					err := e.marshal(val.Field(i).Interface())
+				if s[0] == "switch" || sts.caseMatch() {
+					err := e.marshal(val.Field(i).Interface(), newStructTagState())
 					if err != nil {
 						return err
 					}
@@ -159,31 +163,35 @@ func (e *encodeState) marshal(v interface{}) error {
 	return nil
 }
 
-func (e *encodeState) switchStatement(u uint32) {
-	e.isSwitch = true
-	e.switchValue = u
-	e.isCase = false
-	e.matched = false
+func newStructTagState() *structTagState {
+	return new(structTagState)
 }
 
-func (e *encodeState) caseStatement(u uint32) {
-	if e.switchValue == uint32(u) {
-		e.isCase = true
-		e.currentCase = uint32(u)
-		e.matched = true
+func (sts *structTagState) switchStatement(u uint32) {
+	sts.isSwitch = true
+	sts.switchValue = u
+	sts.isCase = false
+	sts.matched = false
+}
+
+func (sts *structTagState) caseStatement(u uint32) {
+	if sts.switchValue == uint32(u) {
+		sts.isCase = true
+		sts.currentCase = uint32(u)
+		sts.matched = true
 	} else {
-		e.isCase = false
+		sts.isCase = false
 	}
 }
 
-func (e *encodeState) defaultStatement() {
+func (sts *structTagState) defaultStatement() {
 	// if a previous case matched, the default statement will not be executed
 	// if no previous case matched, the default statement will be executed
-	e.isCase = !e.matched
+	sts.isCase = !sts.matched
 }
 
-func (e *encodeState) caseMatch() bool {
-	return !e.isSwitch || (e.isSwitch && e.isCase)
+func (s *structTagState) caseMatch() bool {
+	return !s.isSwitch || (s.isSwitch && s.isCase)
 }
 
 func newEncodeState() *encodeState {
