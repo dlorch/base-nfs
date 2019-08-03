@@ -29,8 +29,6 @@ type Exports struct {
 	ExNext       interface{}
 }
 
-// TODO marshaller doesn't send last 0 from ExNext, because of case=0 in Group. idea: put switch flags in function marshal() as args
-
 // ExportNode ...
 type ExportNode struct{}
 
