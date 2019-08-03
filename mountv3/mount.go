@@ -1,3 +1,7 @@
+// Copyright 2019 Daniel Lorch. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package mountv3
 
 import (
@@ -5,38 +9,43 @@ import (
 	"encoding/binary"
 
 	"github.com/dlorch/nfsv3/rpcv2"
+	"github.com/dlorch/nfsv3/xdr"
 )
 
-// MountResult3 (RFC1813: struct mountres3)
-type MountResult3 struct {
-	Status         uint32
-	MountResult3OK MountResult3OK
-}
+// MountProcedure3Mnt is the number for this RPC procedure (MOUNTPROC3_MNT)
+const MountProcedure3Mnt uint32 = 1
 
-// MountResult3OK (RFC1813: struct mountres3_ok)
-type MountResult3OK struct {
-	FileHandle3 []byte
+// MountRes3OK (struct mountres3_ok)
+type MountRes3OK struct {
+	FHandle     []byte
 	AuthFlavors []uint32
 }
 
-// ToBytes serializes the MountResult3 to be sent back to the client
-func (reply *MountResult3) ToBytes() ([]byte, error) {
-	var responseBuffer = new(bytes.Buffer)
-
-	err := binary.Write(responseBuffer, binary.BigEndian, Mount3OK)
-
-	err = binary.Write(responseBuffer, binary.BigEndian, uint32(4))  // length of file handle
-	err = binary.Write(responseBuffer, binary.BigEndian, uint32(42)) // file handle
-
-	err = binary.Write(responseBuffer, binary.BigEndian, uint32(1))                // number of auth flavors
-	err = binary.Write(responseBuffer, binary.BigEndian, rpcv2.AuthenticationUNIX) // allowed flavors
-
-	responseBytes := make([]byte, responseBuffer.Len())
-	copy(responseBytes, responseBuffer.Bytes())
-	return responseBytes, err
+// MountRes3 (struct mountres3)
+type MountRes3 struct {
+	FhsStatus uint32      `xdr:"switch"`
+	MountInfo MountRes3OK `xdr:"case=0"`
 }
 
-func mountProcedure3mount(procedureArguments []byte) (rpcv2.Serializable, error) {
+// MountResult3 (RFC1813: struct mountres3)
+type MountResult3 struct{}
+
+// ToBytes serializes the MountResult3 to be sent back to the client
+func (reply *MountResult3) ToBytes() ([]byte, error) {
+	mountOk := &MountRes3{
+		FhsStatus: Mount3OK,
+		MountInfo: MountRes3OK{
+			FHandle:     []byte{0, 0, 0, 42},
+			AuthFlavors: []uint32{rpcv2.AuthenticationUNIX},
+		},
+	}
+
+	return xdr.Marshal(mountOk)
+}
+
+// Mnt maps a pathname on the server to a file handle.
+// https://tools.ietf.org/html/rfc1813#page-109
+func Mnt(procedureArguments []byte) (rpcv2.Serializable, error) {
 	// parse request
 	requestBuffer := bytes.NewBuffer(procedureArguments)
 

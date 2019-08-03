@@ -35,7 +35,6 @@ const (
 	Program                    uint32 = 100005 // Mount service program number
 	Version                    uint32 = 3      // Mount service version
 	MountProcedure3Null        uint32 = 0      // MOUNTPROC3_NULL
-	MountProcedure3Mount       uint32 = 1      // MOUNTPROC3_MNT
 	MountProcedure3Dump        uint32 = 2      // MOUNTPROC3_DUMP
 	MountProcedure3Unmount     uint32 = 3      // MOUNTPROC3_UMNT
 	MountProcedure3UnmountAll  uint32 = 4      // MOUNTPROC3_UMNTALL
