@@ -314,3 +314,41 @@ func TestSwitchSequence(t *testing.T) {
 		t.Fatalf("Expected %v but got %v", switchSequenceExpect, got)
 	}
 }
+
+type UserLinkedList struct {
+	ValueFollows uint32          `xdr:"switch"`
+	Groups       GroupLinkedList `xdr:"case=1"`
+	Next         interface{}
+}
+
+type GroupLinkedList struct {
+	ValueFollows uint32 `xdr:"switch"`
+	GroupID      uint32 `xdr:"case=1"`
+	Next         interface{}
+}
+
+var userLinkedList = &UserLinkedList{
+	ValueFollows: 1,
+	Groups: GroupLinkedList{
+		ValueFollows: 1,
+		GroupID:      12,
+		Next: GroupLinkedList{
+			ValueFollows: 0,
+		},
+	},
+	Next: UserLinkedList{
+		ValueFollows: 0,
+	},
+}
+
+var userLinkedListExpect = []byte{0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0}
+
+func TestUserLinkedList(t *testing.T) {
+	got, err := xdr.Marshal(userLinkedList)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, userLinkedListExpect) {
+		t.Fatalf("Expected %v but got %v", userLinkedListExpect, got)
+	}
+}
