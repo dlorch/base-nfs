@@ -1,20 +1,82 @@
+# NFSv3 Server written in Go
+
+A fully functional NFS (Network File System) Version 3 server
+running an in-memory file system. Includes auxiliary services
+like portmap and mount.
+
+## Development
+
+Following `make` targets are available. For some targets, [Docker]
+and [Docker Compose] are necessary.
+
 ```
-$ sudo showmount -e 172.17.0.2
-Exports list on 127.0.0.1:
-/volume1/Public                     *
-$ sudo mount -o nolock,nfsvers=3 172.17.0.2:/volume1/Public /mnt
-$ mount | grep Public
-172.17.0.2:/volume1/Public on /mnt type nfs (rw,relatime,vers=3,rsize=131072,wsize=131072,namlen=255,hard,nolock,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.17.0.2,mountvers=3,mountport=892,mountproto=tcp,local_lock=all,addr=172.17.0.2)
-$ ls /mnt
-gopher.go
+$ make
+integration-logs               show logs from nfs-server [requires Docker Compose]
+integration-setup              build docker images for integration tests [requires Docker Compose]
+integration-shell              enter shell on tester [requires Docker Compose]
+integration-teardown           destroy resources associated to integration tests [requires Docker Compose]
+integration                    run all integration tests [requires Docker Compose]
+unittests                      run all unit tests
 ```
 
-Golang concepts and best practices considered:
+### General Tips for Debugging
+
+Retrieve logs from NFS server:
+
+```
+$ make integration-logs
+```
+
+Enter a shell. The nfs server is available as `nfs-server`:
+
+```
+$ make integration-shell
+# showmount -e nfs-server  # inside the shell
+```
+
+Cleanup (removes containers and logs):
+
+```
+$ make integration-teardown
+```
+
+### Tips for Debugging Protocol Problems
+
+Enter a shell and use `tcpdump` to record traffic, which can later
+be analyzed using [Wireshark].
+
+```
+$ make integration-shell
+# tpcdump -i eth0 -w /tests/dump.pcap &  # run in background
+```
+
+This will capture the network traffic to the NFS server. The
+directory `/tests/` is mounted to the host system. Now run your
+commands:
+
+```
+# showmount -e nfs-server
+```
+
+Get `tcpdump` back in the foreground, and close it with CTRL-C:
+
+```
+# fg
+^C
+```
+
+You can now analyze `/test/dump.pcap` with [Wireshark].
+
+### Golang concepts and best practices considered
+
 * [Standard Go Project Layout]
 * [What's in a name?]
 * [Twelve Go Best Practices]
 * [Object Oriented Inheritance in Go]
 
+[Docker]: https://www.docker.com/
+[Docker Compose]: https://docs.docker.com/compose/
+[Wireshark]: https://www.wireshark.org/
 [Standard Go Project Layout]: https://github.com/golang-standards/project-layout
 [What's in a name?]: https://talks.golang.org/2014/names.slide
 [Twelve Go Best Practices]: https://talks.golang.org/2013/bestpractices.slide
