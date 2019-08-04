@@ -12,6 +12,9 @@ integration-setup: $(TMPDIR)/.integration-setup ## build docker images for integ
 integration-teardown: ## destroy resources associated to integration tests [requires Docker Compose]
 	docker-compose -f tests/docker-compose.yaml down
 
+integration-shell: ## enter shell on tester [requires Docker Compose]
+	docker-compose -f tests/docker-compose.yaml run tester /bin/sh
+
 integration-logs: ## show logs from nfs-server [requires Docker Compose]
 	docker-compose -f tests/docker-compose.yaml logs
 
