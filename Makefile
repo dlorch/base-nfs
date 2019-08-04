@@ -15,6 +15,9 @@ integration-teardown: ## destroy resources associated to integration tests [requ
 integration-shell: ## enter shell on tester [requires Docker Compose]
 	docker-compose -f tests/docker-compose.yaml run tester /bin/sh
 
+integration-logs-f:
+	docker-compose -f tests/docker-compose.yaml logs -f
+
 integration-logs: ## show logs from nfs-server [requires Docker Compose]
 	docker-compose -f tests/docker-compose.yaml logs
 
