@@ -27,7 +27,7 @@ Retrieve logs from NFS server:
 $ make integration-logs
 ```
 
-Enter a shell. The nfs server is available as `nfs-server`:
+Enter a shell. The NFS server is available as `nfs-server`:
 
 ```
 $ make integration-shell
