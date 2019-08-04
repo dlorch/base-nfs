@@ -18,11 +18,18 @@ func TestEncodeNil(t *testing.T) {
 	}
 }
 
+func TestDecodeNil(t *testing.T) {
+	_, err := xdr.Unmarshal([]byte{}, nil)
+	if err == nil {
+		t.Fatalf("Expected error for nil")
+	}
+}
+
 type Empty struct{}
 
 var empty = &Empty{}
 
-var emptyExpect = []byte{}
+var emptyBytes = []byte{}
 
 func TestEncodeEmpty(t *testing.T) {
 	got, err := xdr.Marshal(empty)
@@ -30,7 +37,18 @@ func TestEncodeEmpty(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 	if len(got) != 0 {
-		t.Fatalf("Expected %v but got %v", emptyExpect, got)
+		t.Fatalf("Expected %v but got %v", emptyBytes, got)
+	}
+}
+
+func TestDecodeEmpty(t *testing.T) {
+	var got Empty
+	_, err := xdr.Unmarshal(emptyBytes, &got)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(&got, empty) {
+		t.Fatalf("Expected %v but got %v", empty, got)
 	}
 }
 
@@ -45,15 +63,26 @@ var simple = &Simple{
 	Size: 5034543534,
 }
 
-var simpleExpect = []byte{0, 0, 0, 1, 0, 0, 0, 1, 44, 21, 9, 174}
+var simpleBytes = []byte{0, 0, 0, 1, 0, 0, 0, 1, 44, 21, 9, 174}
 
 func TestEncodeSimple(t *testing.T) {
 	got, err := xdr.Marshal(simple)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	if !reflect.DeepEqual(got, simpleExpect) {
-		t.Fatalf("Expected %v but got %v", simpleExpect, got)
+	if !reflect.DeepEqual(got, simpleBytes) {
+		t.Fatalf("Expected %v but got %v", simpleBytes, got)
+	}
+}
+
+func TestDecodeSimple(t *testing.T) {
+	got := &Simple{}
+	_, err := xdr.Unmarshal(simpleBytes, got)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, simple) {
+		t.Fatalf("Expected %v but got %v", simple, got)
 	}
 }
 
@@ -73,15 +102,26 @@ var nested = &Nested{
 	},
 }
 
-var nestedExpect = []byte{0, 0, 0, 12, 0, 0, 0, 13}
+var nestedBytes = []byte{0, 0, 0, 12, 0, 0, 0, 13}
 
 func TestEncodeNested(t *testing.T) {
 	got, err := xdr.Marshal(nested)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	if !reflect.DeepEqual(got, nestedExpect) {
-		t.Fatalf("Expected %v but got %v", nestedExpect, got)
+	if !reflect.DeepEqual(got, nestedBytes) {
+		t.Fatalf("Expected %v but got %v", nestedBytes, got)
+	}
+}
+
+func TestDecodeNested(t *testing.T) {
+	got := &Nested{}
+	_, err := xdr.Unmarshal(nestedBytes, got)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, nested) {
+		t.Fatalf("Expected %v but got %v", nested, got)
 	}
 }
 
@@ -93,15 +133,26 @@ var fixedByteArray = &FixedByteArray{
 	Data: [4]byte{55, 43, 99, 102},
 }
 
-var fixedByteArrayExpect = []byte{55, 43, 99, 102}
+var fixedByteArrayBytes = []byte{55, 43, 99, 102}
 
 func TestEncodeFixedByteArray(t *testing.T) {
 	got, err := xdr.Marshal(fixedByteArray)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	if !reflect.DeepEqual(got, fixedByteArrayExpect) {
-		t.Fatalf("Expected %v but got %v", fixedByteArrayExpect, got)
+	if !reflect.DeepEqual(got, fixedByteArrayBytes) {
+		t.Fatalf("Expected %v but got %v", fixedByteArrayBytes, got)
+	}
+}
+
+func TestDecodeFixedByteArray(t *testing.T) {
+	got := &FixedByteArray{}
+	_, err := xdr.Unmarshal(fixedByteArrayBytes, got)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, fixedByteArray) {
+		t.Fatalf("Expected %v but got %v", fixedByteArray, got)
 	}
 }
 
@@ -119,15 +170,26 @@ var dynamicallySizedValues = &DynamicallySizedValues{
 	Another: "lisp",                    // encodes as: length + bytes + no padding (length is already multiple of four)
 }
 
-var dynamicallySizedValuesExpect = []byte{0, 0, 0, 5, 41, 22, 13, 4, 15, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 99, 0, 0, 0, 33, 0, 0, 0, 6, 71, 111, 112, 104, 101, 114, 0, 0, 0, 0, 0, 4, 108, 105, 115, 112}
+var dynamicallySizedValuesBytes = []byte{0, 0, 0, 5, 41, 22, 13, 4, 15, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 99, 0, 0, 0, 33, 0, 0, 0, 6, 71, 111, 112, 104, 101, 114, 0, 0, 0, 0, 0, 4, 108, 105, 115, 112}
 
 func TestEncodeDynamicallySizedValues(t *testing.T) {
 	got, err := xdr.Marshal(dynamicallySizedValues)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	if !reflect.DeepEqual(got, dynamicallySizedValuesExpect) {
-		t.Fatalf("Expected %v but got %v", dynamicallySizedValuesExpect, got)
+	if !reflect.DeepEqual(got, dynamicallySizedValuesBytes) {
+		t.Fatalf("Expected %v but got %v", dynamicallySizedValuesBytes, got)
+	}
+}
+
+func TestDecodeDynamicallySizedValues(t *testing.T) {
+	got := &DynamicallySizedValues{}
+	_, err := xdr.Unmarshal(dynamicallySizedValuesBytes, got)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, dynamicallySizedValues) {
+		t.Fatalf("Expected %v but got %v", dynamicallySizedValues, got)
 	}
 }
 
@@ -144,29 +206,48 @@ var optionalAttributeYes = &OptionalAttribute{
 	},
 }
 
-var OptionalAttributeNo = &OptionalAttribute{
+var optionalAttributeNo = &OptionalAttribute{
 	AttributeFollows: 0,
 }
 
-var optionalAttributeYesExpect = []byte{0, 0, 0, 1, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 33}
+var optionalAttributeYesBytes = []byte{0, 0, 0, 1, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 33}
 
-var optionalAttributeNoExpect = []byte{0, 0, 0, 0}
+var optionalAttributeNoBytes = []byte{0, 0, 0, 0}
 
 func TestEncodeOptionalAttributes(t *testing.T) {
 	got, err := xdr.Marshal(optionalAttributeYes)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	if !reflect.DeepEqual(got, optionalAttributeYesExpect) {
-		t.Fatalf("Expected %v but got %v", optionalAttributeYesExpect, got)
+	if !reflect.DeepEqual(got, optionalAttributeYesBytes) {
+		t.Fatalf("Expected %v but got %v", optionalAttributeYesBytes, got)
 	}
 
-	got, err = xdr.Marshal(OptionalAttributeNo)
+	got, err = xdr.Marshal(optionalAttributeNo)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	if !reflect.DeepEqual(got, optionalAttributeNoExpect) {
-		t.Fatalf("Expected %v but got %v", optionalAttributeNoExpect, got)
+	if !reflect.DeepEqual(got, optionalAttributeNoBytes) {
+		t.Fatalf("Expected %v but got %v", optionalAttributeNoBytes, got)
+	}
+}
+
+func TestDecodeOptionalAttributes(t *testing.T) {
+	got := &OptionalAttribute{}
+	_, err := xdr.Unmarshal(optionalAttributeYesBytes, got)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, optionalAttributeYes) {
+		t.Fatalf("Expected %v but got %v", optionalAttributeYes, got)
+	}
+
+	_, err = xdr.Unmarshal(optionalAttributeNoBytes, got)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, optionalAttributeNo) {
+		t.Fatalf("Expected %v but got %v", optionalAttributeNo, got)
 	}
 }
 
@@ -200,25 +281,44 @@ var unionFailure = &Union{
 	},
 }
 
-var unionSuccessExpect = []byte{0, 0, 0, 0, 0, 0, 0, 44, 0, 0, 0, 36}
+var unionSuccessBytes = []byte{0, 0, 0, 0, 0, 0, 0, 44, 0, 0, 0, 36}
 
-var unionFailureExpect = []byte{0, 0, 0, 1, 0, 0, 0, 99}
+var unionFailureBytes = []byte{0, 0, 0, 1, 0, 0, 0, 99}
 
 func TestEncodeUnion(t *testing.T) {
 	got, err := xdr.Marshal(unionSuccess)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	if !reflect.DeepEqual(got, unionSuccessExpect) {
-		t.Fatalf("Expected %v but got %v", unionSuccessExpect, got)
+	if !reflect.DeepEqual(got, unionSuccessBytes) {
+		t.Fatalf("Expected %v but got %v", unionSuccessBytes, got)
 	}
 
 	got, err = xdr.Marshal(unionFailure)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	if !reflect.DeepEqual(got, unionFailureExpect) {
-		t.Fatalf("Expected %v but got %v", unionFailureExpect, got)
+	if !reflect.DeepEqual(got, unionFailureBytes) {
+		t.Fatalf("Expected %v but got %v", unionFailureBytes, got)
+	}
+}
+
+func TestDecodeUnion(t *testing.T) {
+	got := &Union{}
+	_, err := xdr.Unmarshal(unionSuccessBytes, got)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, unionSuccess) {
+		t.Fatalf("Expected %v but got %v", unionSuccess, got)
+	}
+
+	_, err = xdr.Unmarshal(unionFailureBytes, got)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, unionFailure) {
+		t.Fatalf("Expected %v but got %v", unionFailure, got)
 	}
 }
 
@@ -230,7 +330,7 @@ var invalidCaseNoSwitch = &InvalidCaseNoSwitch{
 	First: 12,
 }
 
-func TestInvalidCaseNoSwitch(t *testing.T) {
+func TestEncodeInvalidCaseNoSwitch(t *testing.T) {
 	got, err := xdr.Marshal(invalidCaseNoSwitch)
 	if err == nil {
 		t.Fatalf("Expected error, but got %v", got)
@@ -245,7 +345,7 @@ var invalidDefaultNoSwitch = &InvalidDefaultNoSwitch{
 	First: 12,
 }
 
-func TestInvalidDefaultNoSwitch(t *testing.T) {
+func TestEncodeInvalidDefaultNoSwitch(t *testing.T) {
 	got, err := xdr.Marshal(invalidDefaultNoSwitch)
 	if err == nil {
 		t.Fatalf("Expected error, but got %v", got)
@@ -262,15 +362,26 @@ var switchDefault = &SwitchDefault{
 	Second: 44,
 }
 
-var switchDefaultExpect = []byte{0, 0, 0, 12, 0, 0, 0, 44}
+var switchDefaultBytes = []byte{0, 0, 0, 12, 0, 0, 0, 44}
 
-func TestSwitchDefault(t *testing.T) {
+func TestEncodeSwitchDefault(t *testing.T) {
 	got, err := xdr.Marshal(switchDefault)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	if !reflect.DeepEqual(got, switchDefaultExpect) {
-		t.Fatalf("Expected %v but got %v", switchDefaultExpect, got)
+	if !reflect.DeepEqual(got, switchDefaultBytes) {
+		t.Fatalf("Expected %v but got %v", switchDefaultBytes, got)
+	}
+}
+
+func TestDecodeSwitchDefault(t *testing.T) {
+	got := &SwitchDefault{}
+	_, err := xdr.Unmarshal(switchDefaultBytes, got)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, switchDefault) {
+		t.Fatalf("Expected %v but got %v", switchDefault, got)
 	}
 }
 
@@ -298,18 +409,29 @@ var switchSequence = &SwitchSequence{
 	Ninth:   11,
 }
 
-var switchSequenceExpect = []byte{0, 0, 0, 12, 0, 0, 0, 44, 0, 0, 0, 5, 0, 0, 0, 122, 0, 0, 0, 93}
+var switchSequenceBytes = []byte{0, 0, 0, 12, 0, 0, 0, 44, 0, 0, 0, 5, 0, 0, 0, 122, 0, 0, 0, 93}
 
 // TestSwitchSequence verifies that two subsequent switch statements are executed correctly. Note that there is no
 // nesting support for switch statements: a new switch statement overwrites the previous one. And also, there is
 // no explicit "end switch" statement - a new switch statement followed by a default statement has to be used instead
-func TestSwitchSequence(t *testing.T) {
+func TestEncodeSwitchSequence(t *testing.T) {
 	got, err := xdr.Marshal(switchSequence)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	if !reflect.DeepEqual(got, switchSequenceExpect) {
-		t.Fatalf("Expected %v but got %v", switchSequenceExpect, got)
+	if !reflect.DeepEqual(got, switchSequenceBytes) {
+		t.Fatalf("Expected %v but got %v", switchSequenceBytes, got)
+	}
+}
+
+func TestDecodeSwitchSequence(t *testing.T) {
+	got := &SwitchSequence{}
+	_, err := xdr.Unmarshal(switchSequenceBytes, got)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, switchSequence) {
+		t.Fatalf("Expected %v but got %v", switchSequence, got)
 	}
 }
 
@@ -339,14 +461,25 @@ var userLinkedList = &UserLinkedList{
 	},
 }
 
-var userLinkedListExpect = []byte{0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0}
+var userLinkedListBytes = []byte{0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0}
 
 func TestUserLinkedList(t *testing.T) {
 	got, err := xdr.Marshal(userLinkedList)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	if !reflect.DeepEqual(got, userLinkedListExpect) {
-		t.Fatalf("Expected %v but got %v", userLinkedListExpect, got)
+	if !reflect.DeepEqual(got, userLinkedListBytes) {
+		t.Fatalf("Expected %v but got %v", userLinkedListBytes, got)
+	}
+}
+
+func TestDecodeUserLinkedList(t *testing.T) {
+	got := &UserLinkedList{}
+	_, err := xdr.Unmarshal(userLinkedListBytes, got)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, userLinkedList) {
+		t.Fatalf("Expected %v but got %v", userLinkedList, got)
 	}
 }

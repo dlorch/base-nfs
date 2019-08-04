@@ -5,6 +5,6 @@
 package xdr
 
 // Unmarshal deserializes a byte array to an XDR format
-func Unmarshal(data []byte, v interface{}) error {
-	return nil // TODO
+func Unmarshal(data []byte, v interface{}) (bytesRead int, err error) {
+	return 0, nil // TODO
 }
