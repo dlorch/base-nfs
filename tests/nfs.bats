@@ -21,3 +21,33 @@
   run cat /mnt/gopher.go
   [ $status -eq 0 ]
 }
+
+@test "create new file" {
+  run touch /mnt/hello.txt
+  [ $status -eq 0 ]
+}
+
+@test "write to file" {
+  run echo "Hello, NFS" > /mnt/hello.txt
+  [ $status -eq 0 ]
+}
+
+@test "append to file" {
+  run echo "Another line" >> /mnt/hello.txt
+  [ $status -eq 0 ]
+}
+
+@test "delete file" {
+  run rm -f /mnt/hello.txt
+  [ $status -eq 0 ]
+}
+
+@test "create new directory" {
+  run mkdir /mnt/new_directory/
+  [ $status -eq 0 ]
+}
+
+@test "delete directory" {
+  run rmdir /mnt/new_directory/
+  [ $status -eq 0 ]
+}
