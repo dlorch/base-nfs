@@ -65,7 +65,7 @@ Get `tcpdump` back in the foreground, and close it with CTRL-C:
 ^C
 ```
 
-You can now analyze `/test/dump.pcap` with [Wireshark].
+You can now analyze `test/dump.pcap` with [Wireshark].
 
 ### Golang concepts and best practices considered
 
