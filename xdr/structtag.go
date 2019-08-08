@@ -4,6 +4,14 @@
 
 package xdr
 
+type structTagState struct {
+	isSwitch    bool   // are we inside a switch statement?
+	switchValue uint32 // the value of the `xdr:"switch"` struct field
+	isCase      bool   // are we inside a case statement?
+	currentCase uint32 // the value of the current `xdr:"case=<n>"`
+	matched     bool   // did any of the case statements match so far?
+}
+
 func newStructTagState() *structTagState {
 	return new(structTagState)
 }
