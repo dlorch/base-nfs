@@ -5,5 +5,7 @@
 /*
 Package xdr facilitates encoding and decoding of XDR (External Data Representation
 Standard) formats as defined in https://tools.ietf.org/html/rfc1014
+
+The package took inspiration from the json package in the Go standard library.
 */
 package xdr
