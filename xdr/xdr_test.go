@@ -25,6 +25,13 @@ func TestDecodeNil(t *testing.T) {
 	}
 }
 
+func TestDecodeNonPtr(t *testing.T) {
+	_, err := xdr.Unmarshal([]byte{}, 42)
+	if err == nil {
+		t.Fatalf("Expected error for non-pointer value")
+	}
+}
+
 type Empty struct{}
 
 var empty = &Empty{}
