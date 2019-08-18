@@ -1,11 +1,11 @@
 before_script:
-  - apk add --no-cache make
+ - apk add --no-cache make
 
 unit tests:
   stage: test
   image: golang:1.8-alpine
   script:
-  - make unittests
+   - make unittests
 
 integration tests:
   stage: test
@@ -13,7 +13,7 @@ integration tests:
     name: docker/compose:1.25.0-rc2-alpine # Pick latest one - no tag 'latest' available
     entrypoint: ["/bin/sh", "-c"]
   services:
-  - docker:dind
+   - docker:dind
   variables:
     # When using dind service we need to instruct docker to talk with the
     # daemon started inside of the service. The daemon is available with
@@ -22,8 +22,8 @@ integration tests:
     # When using dind, it's wise to use the overlayfs driver for
     # improved performance.
     DOCKER_DRIVER: overlay2
- script:
-  - make integration-setup
-  - make integration
-  - make integration-logs
-  - make integration-teardown
+  script:
+   - make integration-setup
+   - make integration
+   - make integration-logs
+   - make integration-teardown
