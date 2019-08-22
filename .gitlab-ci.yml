@@ -5,6 +5,9 @@ unit tests:
   stage: test
   image: golang:1.8-alpine
   script:
+   - mkdir -p $GOPATH/src/github.com/dlorch
+   - ln -s $CI_PROJECT_DIR $GOPATH/src/github.com/dlorch/
+   - cd $GOPATH/src/github.com/dlorch/$CI_PROJECT_DIR
    - make unittests
 
 integration tests:
