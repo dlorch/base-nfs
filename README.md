@@ -1,5 +1,7 @@
 # NFSv3 Server written in Go
 
+[![pipeline status](https://gitlab.com/dlorch/nfsv3/badges/master/pipeline.svg)](https://gitlab.com/dlorch/nfsv3/commits/master)
+
 A fully functional NFS (Network File System) Version 3 server
 running an in-memory file system. Includes auxiliary services
 like portmap and mount.
