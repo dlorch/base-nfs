@@ -1,4 +1,4 @@
-# NFSv3 Server written in Go
+![Base NFS Logo](base-nfs.png)
 
 [![pipeline status](https://gitlab.com/dlorch/nfsv3/badges/master/pipeline.svg)](https://gitlab.com/dlorch/nfsv3/commits/master)
 
