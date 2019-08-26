@@ -7,7 +7,7 @@ package xdr_test
 import (
 	"fmt"
 
-	"github.com/dlorch/nfsv3/xdr"
+	"github.com/dlorch/base-nfs/xdr"
 )
 
 // /*

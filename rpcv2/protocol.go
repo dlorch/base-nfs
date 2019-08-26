@@ -37,7 +37,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/dlorch/nfsv3/xdr"
+	"github.com/dlorch/base-nfs/xdr"
 )
 
 // RPCMessage describes the request/response RPC header (RFC1057: struct rpc_msg)

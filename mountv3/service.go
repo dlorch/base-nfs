@@ -31,7 +31,7 @@
 package mountv3
 
 import (
-	"github.com/dlorch/nfsv3/rpcv2"
+	"github.com/dlorch/base-nfs/rpcv2"
 )
 
 // MountService ...

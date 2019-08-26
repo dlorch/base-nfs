@@ -34,9 +34,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dlorch/nfsv3/mountv3"
-	"github.com/dlorch/nfsv3/nfsv3"
-	"github.com/dlorch/nfsv3/portmapv2"
+	"github.com/dlorch/base-nfs/mountv3"
+	"github.com/dlorch/base-nfs/nfsv3"
+	"github.com/dlorch/base-nfs/portmapv2"
 )
 
 func main() {

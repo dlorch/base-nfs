@@ -30,7 +30,7 @@
 
 package nfsv3
 
-import "github.com/dlorch/nfsv3/rpcv2"
+import "github.com/dlorch/base-nfs/rpcv2"
 
 // NFSService ...
 type NFSService struct {

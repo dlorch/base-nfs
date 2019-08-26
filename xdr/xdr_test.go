@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/dlorch/nfsv3/xdr"
+	"github.com/dlorch/base-nfs/xdr"
 )
 
 func TestEncodeNil(t *testing.T) {

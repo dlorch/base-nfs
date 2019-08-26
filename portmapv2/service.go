@@ -33,9 +33,9 @@ package portmapv2
 import (
 	"fmt"
 
-	"github.com/dlorch/nfsv3/mountv3"
-	"github.com/dlorch/nfsv3/nfsv3"
-	"github.com/dlorch/nfsv3/rpcv2"
+	"github.com/dlorch/base-nfs/mountv3"
+	"github.com/dlorch/base-nfs/nfsv3"
+	"github.com/dlorch/base-nfs/rpcv2"
 )
 
 // PortmapService ...

@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"encoding/binary"
 
-	"github.com/dlorch/nfsv3/rpcv2"
+	"github.com/dlorch/base-nfs/rpcv2"
 )
 
 // MountProcedure3Mnt is the number for this RPC procedure (MOUNTPROC3_MNT)
