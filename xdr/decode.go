@@ -4,7 +4,12 @@
 
 package xdr
 
-import "reflect"
+import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"reflect"
+)
 
 // UnmarshalError is returned by Unmarshal when an unexpected error
 // occurred during the unmarshalling process
@@ -17,7 +22,7 @@ func (e *UnmarshalError) Error() string {
 }
 
 type decodeState struct {
-	data []byte
+	data *bytes.Buffer
 	off  int // next read offset in data
 }
 
@@ -29,16 +34,47 @@ func Unmarshal(data []byte, v interface{}) (bytesRead int, err error) {
 }
 
 func (d *decodeState) unmarshal(v interface{}) (bytesRead int, err error) {
-	val := reflect.ValueOf(v)
-	if val.Kind() != reflect.Ptr || val.IsNil() {
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Ptr || rv.IsNil() {
 		return d.off, &UnmarshalError{s: "invalid value for unmarshalling: must be pointer and not nil"}
 	}
 
-	return 0, nil
+	val := rv.Elem()
+	switch val.Kind() {
+	case reflect.Struct:
+		for i := 0; i < val.NumField(); i++ {
+			if val.Field(i).CanInterface() { // only consider exported field symbols
+				_, err := d.unmarshal(val.Field(i).Addr().Interface())
+				if err != nil {
+					return d.off, err
+				}
+			}
+		}
+	case reflect.Uint32:
+		var v uint32
+		err := binary.Read(d.data, binary.BigEndian, &v)
+		if err != nil {
+			return d.off, err
+		}
+		fmt.Println(v)
+		val.SetUint(uint64(v))
+	case reflect.Uint64:
+		var v uint64
+		err := binary.Read(d.data, binary.BigEndian, &v)
+		if err != nil {
+			return d.off, err
+		}
+		fmt.Println(v)
+		val.SetUint(v)
+	default:
+		return d.off, &UnmarshalError{s: "unsupported type: " + val.Type().String()}
+	}
+
+	return d.off, nil
 }
 
 func (d *decodeState) init(data []byte) {
-	d.data = data
+	d.data = bytes.NewBuffer(data)
 	d.off = 0
 }
 
