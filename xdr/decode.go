@@ -7,7 +7,6 @@ package xdr
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"reflect"
 )
 
@@ -50,13 +49,21 @@ func (d *decodeState) unmarshal(v interface{}) (bytesRead int, err error) {
 				}
 			}
 		}
+	case reflect.Array:
+		var b byte
+		for i := 0; i < val.Len(); i++ {
+			err := binary.Read(d.data, binary.BigEndian, &b)
+			if err != nil {
+				return d.off, err
+			}
+			val.Index(i).SetUint(uint64(b))
+		}
 	case reflect.Uint32:
 		var v uint32
 		err := binary.Read(d.data, binary.BigEndian, &v)
 		if err != nil {
 			return d.off, err
 		}
-		fmt.Println(v)
 		val.SetUint(uint64(v))
 	case reflect.Uint64:
 		var v uint64
@@ -64,7 +71,6 @@ func (d *decodeState) unmarshal(v interface{}) (bytesRead int, err error) {
 		if err != nil {
 			return d.off, err
 		}
-		fmt.Println(v)
 		val.SetUint(v)
 	default:
 		return d.off, &UnmarshalError{s: "unsupported type: " + val.Type().String()}
