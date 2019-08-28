@@ -1,4 +1,6 @@
-![Base NFS Logo](base-nfs.png)
+<p align="center">
+    <img height="250" width="250" src="https://github.com/dlorch/base-nfs/blob/master/base-nfs.png?raw=true">
+</p>
 
 [![pipeline status](https://gitlab.com/dlorch/base-nfs/badges/master/pipeline.svg)](https://gitlab.com/dlorch/base-nfs/commits/master)
 
