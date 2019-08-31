@@ -443,27 +443,27 @@ func TestDecodeSwitchSequence(t *testing.T) {
 }
 
 type UserLinkedList struct {
-	ValueFollows uint32          `xdr:"switch"`
-	Groups       GroupLinkedList `xdr:"case=1"`
-	Next         interface{}
+	ValueFollows uint32           `xdr:"switch"`
+	Groups       *GroupLinkedList `xdr:"case=1"`
+	Next         *UserLinkedList
 }
 
 type GroupLinkedList struct {
 	ValueFollows uint32 `xdr:"switch"`
 	GroupID      uint32 `xdr:"case=1"`
-	Next         interface{}
+	Next         *GroupLinkedList
 }
 
 var userLinkedList = &UserLinkedList{
 	ValueFollows: 1,
-	Groups: GroupLinkedList{
+	Groups: &GroupLinkedList{
 		ValueFollows: 1,
 		GroupID:      12,
-		Next: GroupLinkedList{
+		Next: &GroupLinkedList{
 			ValueFollows: 0,
 		},
 	},
-	Next: UserLinkedList{
+	Next: &UserLinkedList{
 		ValueFollows: 0,
 	},
 }
