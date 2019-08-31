@@ -7,6 +7,7 @@ package xdr
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"reflect"
 )
 
@@ -58,6 +59,70 @@ func (d *decodeState) unmarshal(v interface{}) (bytesRead int, err error) {
 			}
 			val.Index(i).SetUint(uint64(b))
 		}
+	case reflect.Slice:
+		var l uint32
+		err := binary.Read(d.data, binary.BigEndian, &l)
+		if err != nil {
+			return d.off, err
+		}
+
+		_, ok := v.(*[]byte)
+		if ok {
+			b := make([]byte, l)
+			n, err := d.data.Read(b)
+			if err != nil {
+				return d.off, err
+			}
+			if n != int(l) {
+				return d.off, &UnmarshalError{s: fmt.Sprintf("slice variable supposed to be length %d, but could only ready %d bytes", l, n)}
+			}
+			if l%4 > 0 {
+				pad := int(4 - (l % 4))
+				for i := 0; i < pad; i++ {
+					_, err := d.data.ReadByte()
+					if err != nil {
+						return d.off, err
+					}
+				}
+			}
+			val.SetBytes(b)
+			return d.off, nil
+		}
+		_, ok = v.(*[]uint32)
+		if ok {
+			u := make([]uint32, l)
+			err := binary.Read(d.data, binary.BigEndian, &u)
+			if err != nil {
+				return d.off, err
+			}
+			val.Set(reflect.ValueOf(u))
+			return d.off, nil
+		}
+		return d.off, &UnmarshalError{s: "error for type " + val.Type().String() + ": type assertion to []byte / []uint32 failed"}
+	case reflect.String:
+		var len uint32
+		err := binary.Read(d.data, binary.BigEndian, &len)
+		if err != nil {
+			return d.off, err
+		}
+		b := make([]byte, len)
+		n, err := d.data.Read(b)
+		if err != nil {
+			return d.off, err
+		}
+		if n != int(len) {
+			return d.off, &UnmarshalError{s: fmt.Sprintf("string variable supposed to be length %d, but could only ready %d bytes", len, n)}
+		}
+		if len%4 > 0 {
+			pad := int(4 - (len % 4))
+			for i := 0; i < pad; i++ {
+				_, err := d.data.ReadByte()
+				if err != nil {
+					return d.off, err
+				}
+			}
+		}
+		val.SetString(string(b))
 	case reflect.Uint32:
 		var v uint32
 		err := binary.Read(d.data, binary.BigEndian, &v)
