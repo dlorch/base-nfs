@@ -24,9 +24,9 @@ func (sts *structTagState) switchStatement(u uint32) {
 }
 
 func (sts *structTagState) caseStatement(u uint32) {
-	if sts.switchValue == uint32(u) {
+	if sts.switchValue == u {
 		sts.isCase = true
-		sts.currentCase = uint32(u)
+		sts.currentCase = u
 		sts.matched = true
 	} else {
 		sts.isCase = false

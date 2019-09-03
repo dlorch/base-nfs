@@ -9,6 +9,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"reflect"
+	"strconv"
+	"strings"
 )
 
 // UnmarshalError is returned by Unmarshal when an unexpected error
@@ -29,11 +31,12 @@ type decodeState struct {
 // Unmarshal deserializes a byte array to an XDR format
 func Unmarshal(data []byte, v interface{}) (bytesRead int, err error) {
 	d := newDecodeState()
+	s := newStructTagState()
 	d.init(data)
-	return d.unmarshal(v)
+	return d.unmarshal(v, s)
 }
 
-func (d *decodeState) unmarshal(v interface{}) (bytesRead int, err error) {
+func (d *decodeState) unmarshal(v interface{}, sts *structTagState) (bytesRead int, err error) {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
 		return d.off, &UnmarshalError{s: "invalid value for unmarshalling: must be pointer and not nil"}
@@ -44,9 +47,43 @@ func (d *decodeState) unmarshal(v interface{}) (bytesRead int, err error) {
 	case reflect.Struct:
 		for i := 0; i < val.NumField(); i++ {
 			if val.Field(i).CanInterface() { // only consider exported field symbols
-				_, err := d.unmarshal(val.Field(i).Addr().Interface())
-				if err != nil {
-					return d.off, err
+				f := reflect.TypeOf(v).Elem().Field(i) // to get the struct tag, need to go via reflect.TypeOf(v).Field(i) and not via reflect.ValueOf(v).Field(i)
+				x := f.Tag.Get("xdr")
+				s := strings.Split(x, "=")
+
+				switch s[0] {
+				case "switch":
+					if val.Field(i).Kind() != reflect.Uint32 {
+						return d.off, &MarshalError{s: fmt.Sprintf("invalid type for struct field '%s': require uint32 for `xdr:\"switch\"`", f.Name)}
+					}
+					_, err := d.unmarshal(val.Field(i).Addr().Interface(), sts)
+					if err != nil {
+						return d.off, err
+					}
+					u, _ := val.Field(i).Interface().(uint32)
+					sts.switchStatement(u)
+					continue
+				case "case":
+					if !sts.isSwitch {
+						return d.off, &UnmarshalError{s: fmt.Sprintf("invalid `xdr:\"case=%s\" for struct field '%s': no corresponding `xdr:\"switch\"` statement found", s[1], f.Name)}
+					}
+					u, err := strconv.ParseUint(s[1], 10, 32)
+					if err != nil {
+						return d.off, &UnmarshalError{s: fmt.Sprintf("invalid value '%s' in `xdr:\"case=%s\"` for struct field '%s': require uint32 value", s[1], s[1], f.Name)}
+					}
+					sts.caseStatement(uint32(u))
+				case "default":
+					if !sts.isSwitch {
+						return d.off, &UnmarshalError{s: fmt.Sprintf("invalid `xdr:\"default\"` for struct field '%s': no corresponding `xdr:\"switch\"` statement found", f.Name)}
+					}
+					sts.defaultStatement()
+				}
+
+				if sts.caseMatch() {
+					_, err := d.unmarshal(val.Field(i).Addr().Interface(), newStructTagState())
+					if err != nil {
+						return d.off, err
+					}
 				}
 			}
 		}

@@ -249,6 +249,7 @@ func TestDecodeOptionalAttributes(t *testing.T) {
 		t.Fatalf("Expected %v but got %v", optionalAttributeYes, got)
 	}
 
+	got = &OptionalAttribute{}
 	_, err = xdr.Unmarshal(optionalAttributeNoBytes, got)
 	if err != nil {
 		t.Fatal(err.Error())
@@ -320,6 +321,7 @@ func TestDecodeUnion(t *testing.T) {
 		t.Fatalf("Expected %v but got %v", unionSuccess, got)
 	}
 
+	got = &Union{}
 	_, err = xdr.Unmarshal(unionFailureBytes, got)
 	if err != nil {
 		t.Fatal(err.Error())
