@@ -420,6 +420,14 @@ var switchSequence = &SwitchSequence{
 
 var switchSequenceBytes = []byte{0, 0, 0, 12, 0, 0, 0, 44, 0, 0, 0, 5, 0, 0, 0, 122, 0, 0, 0, 93}
 
+var switchSequenceDecoded = &SwitchSequence{
+	First:   12,
+	Second:  44,
+	Third:   5,
+	Sixth:   122,
+	Seventh: 93,
+}
+
 // TestSwitchSequence verifies that two subsequent switch statements are executed correctly. Note that there is no
 // nesting support for switch statements: a new switch statement overwrites the previous one. And also, there is
 // no explicit "end switch" statement - a new switch statement followed by a default statement has to be used instead
@@ -439,8 +447,8 @@ func TestDecodeSwitchSequence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	if !reflect.DeepEqual(got, switchSequence) {
-		t.Fatalf("Expected %v but got %v", switchSequence, got)
+	if !reflect.DeepEqual(got, switchSequenceDecoded) {
+		t.Fatalf("Expected %v but got %v", switchSequenceDecoded, got)
 	}
 }
 

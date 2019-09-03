@@ -80,7 +80,7 @@ func (d *decodeState) unmarshal(v interface{}, sts *structTagState) (bytesRead i
 				}
 
 				if sts.caseMatch() {
-					_, err := d.unmarshal(val.Field(i).Addr().Interface(), newStructTagState())
+					_, err := d.unmarshal(val.Field(i).Addr().Interface(), sts)
 					if err != nil {
 						return d.off, err
 					}
