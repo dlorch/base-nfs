@@ -200,6 +200,17 @@ func TestDecodeDynamicallySizedValues(t *testing.T) {
 	}
 }
 
+var invalidSizedValuesBytes = []byte{0, 0, 0, 3, 1, 2}
+
+func TestInvalidSizedValues(t *testing.T) {
+	got := &DynamicallySizedValues{}
+	_, err := xdr.Unmarshal(invalidSizedValuesBytes, got)
+	t.Fatal(err)
+	if err == nil {
+		t.Fatalf("Expected error, but got %v", got)
+	}
+}
+
 type OptionalAttribute struct {
 	AttributeFollows uint32 `xdr:"switch"`
 	Attribute        Simple `xdr:"case=1"`
