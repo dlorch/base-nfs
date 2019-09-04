@@ -174,10 +174,15 @@ func (d *decodeState) unmarshal(v interface{}, sts *structTagState) (bytesRead i
 			return d.off, err
 		}
 		val.SetUint(v)
+	case reflect.Ptr:
+		val.Set(reflect.New(val.Type().Elem()))
+		_, err := d.unmarshal(val.Elem().Addr().Interface(), newStructTagState())
+		if err != nil {
+			return d.off, err
+		}
 	default:
-		return d.off, &UnmarshalError{s: "unsupported type: " + val.Type().String()}
+		return d.off, &UnmarshalError{s: "unsupported type: " + val.Type().String() + " of kind " + val.Kind().String()}
 	}
-
 	return d.off, nil
 }
 
