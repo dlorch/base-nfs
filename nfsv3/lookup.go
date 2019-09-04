@@ -1,3 +1,7 @@
+// Copyright 2019 Daniel Lorch. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 // Procedure 3: LOOKUP -  Lookup filename
 // https://tools.ietf.org/html/rfc1813#page-37
 
