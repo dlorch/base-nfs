@@ -18,36 +18,43 @@
 }
 
 @test "cat file" {
+  skip "Not yet implemented"
   run cat /mnt/gopher.go
   [ $status -eq 0 ]
 }
 
 @test "create new file" {
+  skip "Not yet implemented"
   run touch /mnt/hello.txt
   [ $status -eq 0 ]
 }
 
 @test "write to file" {
+  skip "Not yet implemented"
   run echo "Hello, NFS" > /mnt/hello.txt
   [ $status -eq 0 ]
 }
 
 @test "append to file" {
+  skip "Not yet implemented"
   run echo "Another line" >> /mnt/hello.txt
   [ $status -eq 0 ]
 }
 
 @test "delete file" {
+  skip "Not yet implemented"
   run rm -f /mnt/hello.txt
   [ $status -eq 0 ]
 }
 
 @test "create new directory" {
+  skip "Not yet implemented"
   run mkdir /mnt/new_directory/
   [ $status -eq 0 ]
 }
 
 @test "delete directory" {
+  skip "Not yet implemented"
   run rmdir /mnt/new_directory/
   [ $status -eq 0 ]
 }
