@@ -6,8 +6,8 @@ unit tests:
   image: golang:1.8-alpine
   script:
    - mkdir -p $GOPATH/src/github.com/dlorch
-   - ln -s $CI_PROJECT_DIR $GOPATH/src/github.com/dlorch/nfsv3
-   - cd $GOPATH/src/github.com/dlorch/nfsv3
+   - ln -s $CI_PROJECT_DIR $GOPATH/src/github.com/dlorch/base-nfs
+   - cd $GOPATH/src/github.com/dlorch/base-nfs
    - make unittests
 
 integration tests:
