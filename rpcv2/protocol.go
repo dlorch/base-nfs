@@ -145,6 +145,8 @@ func handleClient(requestBytes []byte, rpcProcedures map[uint32]rpcProcedureHand
 		return responseBytes, errors.New("Malformed RPC request")
 	}
 
+	fmt.Println("RPC Version", rpcRequest.CBody.RPCVersion, "ProgramVersion", rpcRequest.CBody.ProgramVersion, "Procedure", rpcRequest.CBody.Procedure, "for program", rpcRequest.CBody.Program)
+
 	if rpcRequest.CBody.RPCVersion != RPCVersion {
 		rpcMismatch := &RPCMessage{
 			XID:         rpcRequest.XID,
@@ -164,10 +166,29 @@ func handleClient(requestBytes []byte, rpcProcedures map[uint32]rpcProcedureHand
 		return xdr.Marshal(rpcMismatch)
 	}
 
-	rpcProcedure, found := rpcProcedures[rpcRequest.CBody.Procedure]
+	// TODO how to check for ProgramMismatch properly?
+	/*
+		if rpcRequest.CBody.Program == 100000 && rpcRequest.CBody.ProgramVersion != 2 {
+			programVersionMismatch := &RPCMessage{
+				XID:         rpcRequest.XID,
+				MessageType: Reply,
+				RBody: ReplyBody{
+					ReplyStatus: MessageAccepted,
+					AReply: AcceptedReply{
+						AcceptState: ProgramMismatch,
+						MismatchInfo: MismatchInfo{
+							Low:  2,
+							High: 2,
+						},
+					},
+				},
+			}
 
-	// TODO how to check for ProgramMismatch?
-	fmt.Println("Procedure ", rpcRequest.CBody.Procedure, " for program ", rpcRequest.CBody.Program)
+			return xdr.Marshal(programVersionMismatch)
+		}
+	*/
+
+	rpcProcedure, found := rpcProcedures[rpcRequest.CBody.Procedure]
 
 	if !found {
 		procUnavail := &RPCMessage{
