@@ -3,14 +3,15 @@
 .DEFAULT_GOAL := help
 SOURCES := $(shell find . -name '*.go')
 
-$(TMPDIR)/.integration-setup: $(SOURCES)
+$(TMPDIR).integration-setup: $(SOURCES)
 	docker-compose -f tests/docker-compose.yaml build
 	touch $@
 
-integration-setup: $(TMPDIR)/.integration-setup ## build docker images for integration tests [requires Docker Compose]
+integration-setup: $(TMPDIR).integration-setup ## build docker images for integration tests [requires Docker Compose]
 
 integration-teardown: ## destroy resources associated to integration tests [requires Docker Compose]
 	docker-compose -f tests/docker-compose.yaml down
+	rm $(TMPDIR).integration-setup
 
 integration-shell: integration-setup ## enter shell on tester [requires Docker Compose]
 	docker-compose -f tests/docker-compose.yaml run tester /bin/sh
