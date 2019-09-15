@@ -10,12 +10,6 @@ type Cookie3 uint64
 // CookieVerifier3 (cookieverf3)
 type CookieVerifier3 [NFS3CookieVerifierSize]byte
 
-// PostOperationFileHandle3 (union post_op_fh3)
-type PostOperationFileHandle3 struct {
-	HandleFollows uint32 // bool
-	Handle        []byte // TODO struct nfs_fh3
-}
-
 // RPC Constants for NFS3 Protocol
 const (
 	Program uint32 = 100003 // Mount service program number
@@ -138,4 +132,30 @@ const (
 type PostOpAttr struct {
 	AttributesFollow uint32 `xdr:"switch"`
 	ObjectAttributes FAttr3 `xdr:"case=1"`
+}
+
+// WccAttr is the subset of pre-operation attributes needed to better support
+// the weak cache consistency semantics (struct wcc_attr)
+type WccAttr struct {
+	Size  uint64
+	MTime NFSTime3
+	CTime NFSTime3
+}
+
+// PreOpAttr describes the pre-operation attributes of the object
+type PreOpAttr struct {
+	AttributesFollow uint32  `xdr:"switch"`
+	ObjectAttributes WccAttr `xdr:"case=1"`
+}
+
+// WccData is the weak cache consistency data
+type WccData struct {
+	Before PreOpAttr
+	After  PostOpAttr
+}
+
+// PostOpFH3 (union post_op_fh3)
+type PostOpFH3 struct {
+	HandleFollows uint32 `xdr:"switch"`
+	Handle        NFSFH3 `xdr:"case=1"`
 }
