@@ -10,12 +10,6 @@ type Cookie3 uint64
 // CookieVerifier3 (cookieverf3)
 type CookieVerifier3 [NFS3CookieVerifierSize]byte
 
-// PostOperationAttributes (union post_op_attr)
-type PostOperationAttributes struct {
-	AttributesFollow uint32 `xdr:"switch"` // TODO bool
-	ObjectAttributes FAttr3 `xdr:"case=1"`
-}
-
 // PostOperationFileHandle3 (union post_op_fh3)
 type PostOperationFileHandle3 struct {
 	HandleFollows uint32 // bool
@@ -138,3 +132,10 @@ const (
 	NFSProcedure3PathConf      uint32 = 20 // NFSPROC3_PATHCONF
 	NFSProcedure3Commint       uint32 = 21 // NFSPROC3_COMMIT
 )
+
+// PostOpAttr returns attributes in those operations that are not directly
+// involved with manipulating attributes (union post_op_attr)
+type PostOpAttr struct {
+	AttributesFollow uint32 `xdr:"switch"`
+	ObjectAttributes FAttr3 `xdr:"case=1"`
+}

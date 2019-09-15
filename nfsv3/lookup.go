@@ -15,13 +15,13 @@ type Lookup3Args struct {
 // Lookup3ResOK ...
 type Lookup3ResOK struct {
 	Object        NFSFH3
-	ObjAttributes PostOperationAttributes
-	DirAttributes PostOperationAttributes
+	ObjAttributes PostOpAttr
+	DirAttributes PostOpAttr
 }
 
 // Lookup3ResFail ...
 type Lookup3ResFail struct {
-	DirAttributes PostOperationAttributes
+	DirAttributes PostOpAttr
 }
 
 // Lookup3Res ...
@@ -40,7 +40,7 @@ func Lookup3(arg []byte) (interface{}, error) {
 			Object: NFSFH3{
 				Data: []byte{1, 2, 3},
 			},
-			ObjAttributes: PostOperationAttributes{
+			ObjAttributes: PostOpAttr{
 				AttributesFollow: 1,
 				ObjectAttributes: FAttr3{
 					Type:  2,
@@ -70,7 +70,7 @@ func Lookup3(arg []byte) (interface{}, error) {
 					},
 				},
 			},
-			DirAttributes: PostOperationAttributes{
+			DirAttributes: PostOpAttr{
 				AttributesFollow: 1,
 				ObjectAttributes: FAttr3{
 					Type:  2,

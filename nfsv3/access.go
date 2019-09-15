@@ -7,7 +7,7 @@ package nfsv3
 // Access3ResultOK (union ACCESS3resok)
 type Access3ResultOK struct {
 	Access3Result
-	PostOperationAttributes
+	PostOpAttr
 	Access uint32
 }
 
@@ -22,7 +22,7 @@ func nfsProcedure3Access(procedureArguments []byte) (interface{}, error) {
 		Access3Result: Access3Result{
 			Status: NFS3OK,
 		},
-		PostOperationAttributes: PostOperationAttributes{
+		PostOpAttr: PostOpAttr{
 			AttributesFollow: 1,
 			ObjectAttributes: FAttr3{
 				Type:  2,

@@ -10,7 +10,7 @@ type EntryPlus3 struct {
 	FileID         uint64 `xdr:"case=1"`
 	FileName3      string
 	Cookie         Cookie3
-	NameAttributes PostOperationAttributes
+	NameAttributes PostOpAttr
 	NameHandle     PostOperationFileHandle3
 	NextEntry      *EntryPlus3
 }
@@ -24,7 +24,7 @@ type DirListPlus3 struct {
 // ReadDirPlus3ResultOK (struct READDIRPLUS3resok)
 type ReadDirPlus3ResultOK struct {
 	ReadDirPlus3Result
-	DirectoryAttributes PostOperationAttributes
+	DirectoryAttributes PostOpAttr
 	CookieVerifier      CookieVerifier3
 	Reply               DirListPlus3
 }
@@ -43,7 +43,7 @@ func nfsProcedure3ReadDirPlus(procedureArguments []byte) (interface{}, error) {
 		ReadDirPlus3Result: ReadDirPlus3Result{
 			Status: NFS3OK,
 		},
-		DirectoryAttributes: PostOperationAttributes{
+		DirectoryAttributes: PostOpAttr{
 			AttributesFollow: 1,
 			ObjectAttributes: FAttr3{
 				Type:  2,
@@ -80,7 +80,7 @@ func nfsProcedure3ReadDirPlus(procedureArguments []byte) (interface{}, error) {
 				FileID:       2,
 				FileName3:    "..",
 				Cookie:       6457138716124813847,
-				NameAttributes: PostOperationAttributes{
+				NameAttributes: PostOpAttr{
 					AttributesFollow: 1,
 					ObjectAttributes: FAttr3{
 						Type:  2,
@@ -119,7 +119,7 @@ func nfsProcedure3ReadDirPlus(procedureArguments []byte) (interface{}, error) {
 					FileID:       16,
 					FileName3:    ".",
 					Cookie:       6684891493313481230,
-					NameAttributes: PostOperationAttributes{
+					NameAttributes: PostOpAttr{
 						AttributesFollow: 1,
 						ObjectAttributes: FAttr3{
 							Type:  2,
@@ -158,7 +158,7 @@ func nfsProcedure3ReadDirPlus(procedureArguments []byte) (interface{}, error) {
 						FileID:       40243830,
 						FileName3:    "gopher.go",
 						Cookie:       3621999153351014942,
-						NameAttributes: PostOperationAttributes{
+						NameAttributes: PostOpAttr{
 							AttributesFollow: 1,
 							ObjectAttributes: FAttr3{
 								Type:  1,
