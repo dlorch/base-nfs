@@ -24,7 +24,7 @@ func nfsProcedure3Access(procedureArguments []byte) (interface{}, error) {
 		},
 		PostOperationAttributes: PostOperationAttributes{
 			AttributesFollow: 1,
-			ObjectAttributes: FileAttr3{
+			ObjectAttributes: FAttr3{
 				Typ:              2,
 				Mode:             040777,
 				Nlink:            4,

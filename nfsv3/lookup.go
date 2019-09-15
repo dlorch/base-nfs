@@ -42,7 +42,7 @@ func Lookup3(arg []byte) (interface{}, error) {
 			},
 			ObjAttributes: PostOperationAttributes{
 				AttributesFollow: 1,
-				ObjectAttributes: FileAttr3{
+				ObjectAttributes: FAttr3{
 					Typ:              2,
 					Mode:             040777,
 					Nlink:            4,
@@ -64,7 +64,7 @@ func Lookup3(arg []byte) (interface{}, error) {
 			},
 			DirAttributes: PostOperationAttributes{
 				AttributesFollow: 1,
-				ObjectAttributes: FileAttr3{
+				ObjectAttributes: FAttr3{
 					Typ:              2,
 					Mode:             040777,
 					Nlink:            4,

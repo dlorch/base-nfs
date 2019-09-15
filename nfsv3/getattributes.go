@@ -12,7 +12,7 @@ type GetAttr3Args struct {
 // GetAttr3ResultOK (struct GETATTR3resok)
 type GetAttr3ResultOK struct {
 	GetAttr3Result
-	ObjectAttributes FileAttr3
+	ObjectAttributes FAttr3
 }
 
 // GetAttr3Result (union GETATTR3res)
@@ -29,7 +29,7 @@ func nfsProcedure3GetAttributes(procedureArguments []byte) (interface{}, error) 
 		GetAttr3Result: GetAttr3Result{
 			Status: NFS3OK,
 		},
-		ObjectAttributes: FileAttr3{
+		ObjectAttributes: FAttr3{
 			Typ:              2,
 			Mode:             040777,
 			Nlink:            4,

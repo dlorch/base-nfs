@@ -10,8 +10,8 @@ type Cookie3 uint64
 // CookieVerifier3 (cookieverf3)
 type CookieVerifier3 [NFS3CookieVerifierSize]byte
 
-// FileAttr3 (struct fattr3)
-type FileAttr3 struct {
+// FAttr3 (struct fattr3)
+type FAttr3 struct {
 	Typ              uint32
 	Mode             uint32
 	Nlink            uint32
@@ -33,8 +33,8 @@ type FileAttr3 struct {
 
 // PostOperationAttributes (union post_op_attr)
 type PostOperationAttributes struct {
-	AttributesFollow uint32    `xdr:"switch"` // TODO bool
-	ObjectAttributes FileAttr3 `xdr:"case=1"`
+	AttributesFollow uint32 `xdr:"switch"` // TODO bool
+	ObjectAttributes FAttr3 `xdr:"case=1"`
 }
 
 // PostOperationFileHandle3 (union post_op_fh3)

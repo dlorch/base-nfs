@@ -45,7 +45,7 @@ func nfsProcedure3ReadDirPlus(procedureArguments []byte) (interface{}, error) {
 		},
 		DirectoryAttributes: PostOperationAttributes{
 			AttributesFollow: 1,
-			ObjectAttributes: FileAttr3{
+			ObjectAttributes: FAttr3{
 				Typ:              2,
 				Mode:             040777,
 				Nlink:            4,
@@ -74,7 +74,7 @@ func nfsProcedure3ReadDirPlus(procedureArguments []byte) (interface{}, error) {
 				Cookie:       6457138716124813847,
 				NameAttributes: PostOperationAttributes{
 					AttributesFollow: 1,
-					ObjectAttributes: FileAttr3{
+					ObjectAttributes: FAttr3{
 						Typ:              2,
 						Mode:             040777,
 						Nlink:            15,
@@ -105,7 +105,7 @@ func nfsProcedure3ReadDirPlus(procedureArguments []byte) (interface{}, error) {
 					Cookie:       6684891493313481230,
 					NameAttributes: PostOperationAttributes{
 						AttributesFollow: 1,
-						ObjectAttributes: FileAttr3{
+						ObjectAttributes: FAttr3{
 							Typ:              2,
 							Mode:             040755,
 							Nlink:            15,
@@ -136,7 +136,7 @@ func nfsProcedure3ReadDirPlus(procedureArguments []byte) (interface{}, error) {
 						Cookie:       3621999153351014942,
 						NameAttributes: PostOperationAttributes{
 							AttributesFollow: 1,
-							ObjectAttributes: FileAttr3{
+							ObjectAttributes: FAttr3{
 								Typ:              1,
 								Mode:             0100666,
 								Nlink:            1,
