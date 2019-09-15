@@ -10,27 +10,6 @@ type Cookie3 uint64
 // CookieVerifier3 (cookieverf3)
 type CookieVerifier3 [NFS3CookieVerifierSize]byte
 
-// FAttr3 (struct fattr3)
-type FAttr3 struct {
-	Typ              uint32
-	Mode             uint32
-	Nlink            uint32
-	UID              uint32
-	GID              uint32
-	Size             uint64
-	Used             uint64
-	Specdata1        uint32
-	Specdata2        uint32
-	Fsid             uint64
-	Fileid           uint64
-	Atimeseconds     uint32
-	Atimenanoseconds uint32
-	Mtimeseconds     uint32
-	Mtimenanoseconds uint32
-	Ctimeseconds     uint32
-	Ctimenanoseconds uint32
-}
-
 // PostOperationAttributes (union post_op_attr)
 type PostOperationAttributes struct {
 	AttributesFollow uint32 `xdr:"switch"` // TODO bool
@@ -115,6 +94,23 @@ type NFSFH3 struct {
 type NFSTime3 struct {
 	Seconds  uint32
 	NSeconds uint32
+}
+
+// FAttr3 defines the attributes of a file system object (struct fattr3)
+type FAttr3 struct {
+	Type   uint32
+	Mode   uint32
+	Nlink  uint32
+	UID    uint32
+	GID    uint32
+	Size   uint64
+	Used   uint64
+	RDev   SpecData3
+	FSID   uint64
+	FileID uint64
+	ATime  NFSTime3
+	MTime  NFSTime3
+	CTime  NFSTime3
 }
 
 // RPC procedure numbers
