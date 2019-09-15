@@ -9,7 +9,7 @@ type EntryPlus3 struct {
 	ValueFollows   uint32 `xdr:"switch"`
 	FileID         uint64 `xdr:"case=1"`
 	FileName3      string
-	Cookie         Cookie3
+	Cookie         uint64
 	NameAttributes PostOpAttr
 	NameHandle     PostOpFH3
 	NextEntry      *EntryPlus3
@@ -25,7 +25,7 @@ type DirListPlus3 struct {
 type ReadDirPlus3ResultOK struct {
 	ReadDirPlus3Result
 	DirectoryAttributes PostOpAttr
-	CookieVerifier      CookieVerifier3
+	CookieVerifier      [NFS3CookieVerfSize]byte
 	Reply               DirListPlus3
 }
 
@@ -73,7 +73,7 @@ func nfsProcedure3ReadDirPlus(procedureArguments []byte) (interface{}, error) {
 				},
 			},
 		},
-		CookieVerifier: [NFS3CookieVerifierSize]byte{},
+		CookieVerifier: [NFS3CookieVerfSize]byte{},
 		Reply: DirListPlus3{
 			Entries: &EntryPlus3{
 				ValueFollows: 1,

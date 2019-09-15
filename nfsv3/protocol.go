@@ -4,12 +4,6 @@
 
 package nfsv3
 
-// Cookie3 (cookie3)
-type Cookie3 uint64
-
-// CookieVerifier3 (cookieverf3)
-type CookieVerifier3 [NFS3CookieVerifierSize]byte
-
 // RPC Constants for NFS3 Protocol
 const (
 	Program uint32 = 100003 // Mount service program number
@@ -18,7 +12,7 @@ const (
 
 // Sizes, given in decimal bytes, of various XDR structures
 const (
-	NFS3CookieVerifierSize uint32 = 8 // The size in bytes of the opaque cookie verifier passed by READDIR and READDIRPLUS (NFS3_COOKIEVERFSIZE)
+	NFS3CookieVerfSize uint32 = 8 // The size in bytes of the opaque cookie verifier passed by READDIR and READDIRPLUS (NFS3_COOKIEVERFSIZE)
 )
 
 // Returned with every procedure's results except for the NULL procedure (enum nfsstat3)
