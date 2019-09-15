@@ -4,6 +4,7 @@
 SOURCES := $(shell find . -name '*.go')
 
 $(TMPDIR).integration-setup: $(SOURCES)
+	docker-compose -f tests/docker-compose.yaml down 2> /dev/null
 	docker-compose -f tests/docker-compose.yaml build
 	touch $@
 
