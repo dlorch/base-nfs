@@ -95,32 +95,6 @@ type FAttr3 struct {
 	CTime  NFSTime3  // The time when the attributes of the file were last changed
 }
 
-// RPC procedure numbers
-const (
-	NFSProcedure3Null          uint32 = 0  // NFSPROC3_NULL
-	NFSProcedure3GetAttributes uint32 = 1  // NFSPROC3_GETATTR
-	NFSProcedure3SetAttributes uint32 = 2  // NFSPROC3_SETATTR
-	NFSProcedure3Lookup        uint32 = 3  // NFSPROC3_LOOKUP
-	NFSProcedure3Access        uint32 = 4  // NFSPROC3_ACCESS
-	NFSProcedure3Readlink      uint32 = 5  // NFSPROC3_READLINK
-	NFSProcedure3Read          uint32 = 6  // NFSPROC3_READ
-	NFSProcedure3Write         uint32 = 7  // NFSPROC3_WRITE
-	NFSProcedure3Create        uint32 = 8  // NFSPROC3_CREATE
-	NFSProcedure3MkDir         uint32 = 9  // NFSPROC3_MKDIR
-	NFSProcedure3Symlink       uint32 = 10 // NFSPROC3_SYMLINK
-	NFSProcedure3MkNod         uint32 = 11 // NFSPROC3_MKNOD
-	NFSProcedure3Remove        uint32 = 12 // NFSPROC3_REMOVE
-	NFSProcedure3RmDir         uint32 = 13 // NFSPROC3_RMDIR
-	NFSProcedure3Rename        uint32 = 14 // NFSPROC3_RENAME
-	NFSProcedure3Link          uint32 = 15 // NFSPROC3_LINK
-	NFSProcedure3ReadDir       uint32 = 16 // NFSPROC3_READDIR
-	NFSProcedure3ReadDirPlus   uint32 = 17 // NFSPROC3_READDIRPLUS
-	NFSProcedure3FSStat        uint32 = 18 // NFSPROC3_FSSTAT
-	NFSProcedure3FSInfo        uint32 = 19 // NFSPROC3_FSINFO
-	NFSProcedure3PathConf      uint32 = 20 // NFSPROC3_PATHCONF
-	NFSProcedure3Commint       uint32 = 21 // NFSPROC3_COMMIT
-)
-
 // PostOpAttr returns attributes in those operations that are not directly
 // involved with manipulating attributes (union post_op_attr)
 type PostOpAttr struct {
@@ -153,3 +127,89 @@ type PostOpFH3 struct {
 	HandleFollows uint32 `xdr:"switch"`
 	Handle        NFSFH3 `xdr:"case=1"`
 }
+
+// For SetATime and SetMTime, indicate how to update attribute (enum time_how)
+const (
+	DontChange uint32 = iota
+	SetToServerTime
+	SetToClienttime
+)
+
+// SetMode3 allows setting the mode
+type SetMode3 struct {
+	SetIt uint32 `xdr:"switch"`
+	Mode  uint32 `xdr:"case=1"`
+}
+
+// SetUID3 allows setting the UID
+type SetUID3 struct {
+	SetIt uint32 `xdr:"switch"`
+	UID   uint32 `xdr:"case=1"`
+}
+
+// SetGID3 allows setting the GID
+type SetGID3 struct {
+	SetIt uint32 `xdr:"switch"`
+	GID   uint32 `xdr:"case=1"`
+}
+
+// SetSize3 allows setting the size
+type SetSize3 struct {
+	SetIt uint32 `xdr:"switch"`
+	Size  uint64 `xdr:"case=1"`
+}
+
+// SetATime allows setting the ATime
+type SetATime struct {
+	SetIt uint32   `xdr:"switch"`
+	ATime NFSTime3 `xdr:"case=2"`
+}
+
+// SetMTime allows setting the MTime
+type SetMTime struct {
+	SetIt uint32   `xdr:"switch"`
+	ATime NFSTime3 `xdr:"case=2"`
+}
+
+// SAttr3 contains the file attributes that can be set from the client (struct sattr3)
+type SAttr3 struct {
+	Mode  SetMode3
+	UID   SetUID3
+	GID   SetGID3
+	Size  SetSize3
+	ATime SetATime
+	MTime SetMTime
+}
+
+// DirOpArgs3 identifies the directory in which to manipulate or access
+// the file (struct diropargs3)
+type DirOpArgs3 struct {
+	Dir  NFSFH3
+	Name string
+}
+
+// RPC procedure numbers
+const (
+	NFSProcedure3Null          uint32 = 0  // NFSPROC3_NULL
+	NFSProcedure3GetAttributes uint32 = 1  // NFSPROC3_GETATTR
+	NFSProcedure3SetAttributes uint32 = 2  // NFSPROC3_SETATTR
+	NFSProcedure3Lookup        uint32 = 3  // NFSPROC3_LOOKUP
+	NFSProcedure3Access        uint32 = 4  // NFSPROC3_ACCESS
+	NFSProcedure3Readlink      uint32 = 5  // NFSPROC3_READLINK
+	NFSProcedure3Read          uint32 = 6  // NFSPROC3_READ
+	NFSProcedure3Write         uint32 = 7  // NFSPROC3_WRITE
+	NFSProcedure3Create        uint32 = 8  // NFSPROC3_CREATE
+	NFSProcedure3MkDir         uint32 = 9  // NFSPROC3_MKDIR
+	NFSProcedure3Symlink       uint32 = 10 // NFSPROC3_SYMLINK
+	NFSProcedure3MkNod         uint32 = 11 // NFSPROC3_MKNOD
+	NFSProcedure3Remove        uint32 = 12 // NFSPROC3_REMOVE
+	NFSProcedure3RmDir         uint32 = 13 // NFSPROC3_RMDIR
+	NFSProcedure3Rename        uint32 = 14 // NFSPROC3_RENAME
+	NFSProcedure3Link          uint32 = 15 // NFSPROC3_LINK
+	NFSProcedure3ReadDir       uint32 = 16 // NFSPROC3_READDIR
+	NFSProcedure3ReadDirPlus   uint32 = 17 // NFSPROC3_READDIRPLUS
+	NFSProcedure3FSStat        uint32 = 18 // NFSPROC3_FSSTAT
+	NFSProcedure3FSInfo        uint32 = 19 // NFSPROC3_FSINFO
+	NFSProcedure3PathConf      uint32 = 20 // NFSPROC3_PATHCONF
+	NFSProcedure3Commint       uint32 = 21 // NFSPROC3_COMMIT
+)
