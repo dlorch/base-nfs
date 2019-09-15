@@ -71,6 +71,12 @@ Get `tcpdump` back in the foreground, and close it with CTRL-C:
 
 You can now analyze `test/dump.pcap` with [Wireshark].
 
+### Relevant RFCs for this project
+
+* [RFC1057] RPC: Remote Procedure Call Protocol Specification Version 2
+* [RFC1813] NFS Version 3 Protocol Specification
+* [RFC1014] XDR: External Data Representation Standard
+
 ### Golang concepts and best practices considered
 
 * [Standard Go Project Layout]
@@ -85,3 +91,6 @@ You can now analyze `test/dump.pcap` with [Wireshark].
 [What's in a name?]: https://talks.golang.org/2014/names.slide
 [Twelve Go Best Practices]: https://talks.golang.org/2013/bestpractices.slide
 [Object Oriented Inheritance in Go]: https://hackthology.com/object-oriented-inheritance-in-go.html
+[RFC1057]: https://tools.ietf.org/html/rfc1057
+[RFC1813]: https://tools.ietf.org/html/rfc1813
+[RFC1014]: https://tools.ietf.org/html/rfc1014
