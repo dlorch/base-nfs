@@ -98,19 +98,19 @@ type NFSTime3 struct {
 
 // FAttr3 defines the attributes of a file system object (struct fattr3)
 type FAttr3 struct {
-	Type   uint32
-	Mode   uint32
-	Nlink  uint32
-	UID    uint32
-	GID    uint32
-	Size   uint64
-	Used   uint64
-	RDev   SpecData3
-	FSID   uint64
-	FileID uint64
-	ATime  NFSTime3
-	MTime  NFSTime3
-	CTime  NFSTime3
+	Type   uint32    // Type of the file
+	Mode   uint32    // Protection mode bits
+	Nlink  uint32    // Number of hard links to the file
+	UID    uint32    // User ID of the owner of the file
+	GID    uint32    // Group ID of the group of the file
+	Size   uint64    // Size of the file in bytes
+	Used   uint64    // Number of bytes of disk space that the file actually uses
+	RDev   SpecData3 // Device file if the file type is NF3Chr or NF3Blk
+	FSID   uint64    // File system identifier for the file system
+	FileID uint64    // A number which uniquely identifies the file within its file system (on UNIX this would be the inumber)
+	ATime  NFSTime3  // The time when the file data was last accessed
+	MTime  NFSTime3  // The time when the file data was last modified
+	CTime  NFSTime3  // The time when the attributes of the file were last changed
 }
 
 // RPC procedure numbers
