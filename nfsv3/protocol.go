@@ -31,11 +31,6 @@ type FileAttr3 struct {
 	Ctimenanoseconds uint32
 }
 
-// NFSFH3 (struct nfs_fh3)
-type NFSFH3 struct {
-	Data []byte
-}
-
 // PostOperationAttributes (union post_op_attr)
 type PostOperationAttributes struct {
 	AttributesFollow uint32    `xdr:"switch"` // TODO bool
@@ -91,6 +86,36 @@ const (
 	NFS3ErrBadType     uint32 = 10007 // An attempt was made to create an object of a type not (NFS3ERR_BADTYPE)
 	NFS3ErrJukeBox     uint32 = 10008 // The server initiated the request, but was not able to complete it in a timely fashion (NFS3ERR_JUKEBOX)
 )
+
+// Type of a file (enum ftype3)
+const (
+	NF3Reg  uint32 = 1 // regular file (NF3REG)
+	NF3Dir  uint32 = 2 // directory (NF3DIR)
+	NF3Blk  uint32 = 3 // block special device file (NF3BLK)
+	NF3Chr  uint32 = 4 // character special device file (NF3CHR)
+	NF3Lnk  uint32 = 5 // symbolic link (NF3LNK)
+	NF3Sock uint32 = 6 // socket (NF3SOCK)
+	NF3FIFO uint32 = 7 // named pipe (NF3FIFO)
+)
+
+// SpecData3 is returned as part of the FAttr3 structure (struct specdata3)
+type SpecData3 struct {
+	SpecData1 uint32
+	SpecData2 uint32
+}
+
+// NFSFH3 describes a file handle which contains all the information
+// the server needs to distuinguish an individual file (struct nfs_fh3)
+type NFSFH3 struct {
+	Data []byte
+}
+
+// NFSTime3 gives the number of seconds and nanoseconds since midnight
+// January 1, 1970 Greenwich Mean Time (struct nfstime3)
+type NFSTime3 struct {
+	Seconds  uint32
+	NSeconds uint32
+}
 
 // RPC procedure numbers
 const (
