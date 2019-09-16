@@ -1,4 +1,4 @@
-FROM golang:1.8 AS builder
+FROM golang:1.13 AS builder
 WORKDIR /go/src/github.com/dlorch/base-nfs/
 ADD ./ /go/src/github.com/dlorch/base-nfs/
 # CGO_ENABLED=0 necessary for the binary to run in alpine
