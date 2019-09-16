@@ -67,11 +67,17 @@ func (d *decodeState) unmarshal(v interface{}, sts *structTagState) (bytesRead i
 					if !sts.isSwitch {
 						return d.off, &UnmarshalError{s: fmt.Sprintf("invalid `xdr:\"case=%s\" for struct field '%s': no corresponding `xdr:\"switch\"` statement found", s[1], f.Name)}
 					}
-					u, err := strconv.ParseUint(s[1], 10, 32)
-					if err != nil {
-						return d.off, &UnmarshalError{s: fmt.Sprintf("invalid value '%s' in `xdr:\"case=%s\"` for struct field '%s': require uint32 value", s[1], s[1], f.Name)}
+					cs := strings.Split(s[1], ",")
+					for _, c := range cs {
+						u, err := strconv.ParseUint(c, 10, 32)
+						if err != nil {
+							return d.off, &UnmarshalError{s: fmt.Sprintf("invalid value '%s' in `xdr:\"case=%s\"` for struct field '%s': require uint32 value", c, c, f.Name)}
+						}
+						sts.caseStatement(uint32(u))
+						if sts.matched {
+							break
+						}
 					}
-					sts.caseStatement(uint32(u))
 				case "default":
 					if !sts.isSwitch {
 						return d.off, &UnmarshalError{s: fmt.Sprintf("invalid `xdr:\"default\"` for struct field '%s': no corresponding `xdr:\"switch\"` statement found", f.Name)}

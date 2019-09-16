@@ -269,6 +269,111 @@ func TestDecodeOptionalAttributes(t *testing.T) {
 	}
 }
 
+type MultipleCase struct {
+	Mode      uint32 `xdr:"switch"`
+	Attribute uint32 `xdr:"case=0,1"`
+	Verifier  uint32 `xdr:"case=2"`
+}
+
+var multipleCaseZero = &MultipleCase{
+	Mode:      0,
+	Attribute: 12,
+}
+
+var multipleCaseOne = &MultipleCase{
+	Mode:      1,
+	Attribute: 44,
+}
+
+var multipleCaseTwo = &MultipleCase{
+	Mode:     2,
+	Verifier: 35,
+}
+
+var multipleCaseThree = &MultipleCase{
+	Mode: 3,
+}
+
+var multipleCaseZeroBytes = []byte{0, 0, 0, 0, 0, 0, 0, 12}
+
+var multipleCaseOneBytes = []byte{0, 0, 0, 1, 0, 0, 0, 44}
+
+var multipleCaseTwoBytes = []byte{0, 0, 0, 2, 0, 0, 0, 35}
+
+var multipleCaseThreeBytes = []byte{0, 0, 0, 3}
+
+func TestEncodeMultipleCase(t *testing.T) {
+	got, err := xdr.Marshal(multipleCaseZero)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, multipleCaseZeroBytes) {
+		t.Fatalf("Expected %v but got %v", multipleCaseZeroBytes, got)
+	}
+
+	got, err = xdr.Marshal(multipleCaseOne)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, multipleCaseOneBytes) {
+		t.Fatalf("Expected %v but got %v", multipleCaseOneBytes, got)
+	}
+
+	got, err = xdr.Marshal(multipleCaseTwo)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, multipleCaseTwoBytes) {
+		t.Fatalf("Expected %v but got %v", multipleCaseTwoBytes, got)
+	}
+
+	got, err = xdr.Marshal(multipleCaseThree)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, multipleCaseThreeBytes) {
+		t.Fatalf("Expected %v but got %v", multipleCaseThreeBytes, got)
+	}
+}
+
+func TestDecodeMultipleCase(t *testing.T) {
+	got := &MultipleCase{}
+	_, err := xdr.Unmarshal(multipleCaseZeroBytes, got)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, multipleCaseZero) {
+		t.Fatalf("Expected %v but got %v", multipleCaseZero, got)
+	}
+
+	got = &MultipleCase{}
+	_, err = xdr.Unmarshal(multipleCaseOneBytes, got)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, multipleCaseOne) {
+		t.Fatalf("Expected %v but got %v", multipleCaseOne, got)
+	}
+
+	got = &MultipleCase{}
+	_, err = xdr.Unmarshal(multipleCaseTwoBytes, got)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, multipleCaseTwo) {
+		t.Fatalf("Expected %v but got %v", multipleCaseTwo, got)
+	}
+
+	got = &MultipleCase{}
+	_, err = xdr.Unmarshal(multipleCaseThreeBytes, got)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	if !reflect.DeepEqual(got, multipleCaseThree) {
+		t.Fatalf("Expected %v but got %v", multipleCaseThree, got)
+	}
+}
+
 type Union struct {
 	Status  uint32        `xdr:"switch"`
 	Success SuccessResult `xdr:"case=0"`
